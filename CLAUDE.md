@@ -5,9 +5,12 @@ An open-source tool combining LLM intelligence + static analysis to produce inte
 
 ## Architecture
 - **Monorepo** with pnpm workspaces
-- **packages/core** — Shared analysis engine (types, persistence, tree-sitter plugin, LLM prompt templates)
-- **packages/dashboard** — React + TypeScript web dashboard (React Flow, Monaco Editor, Zustand, TailwindCSS)
-- **packages/skill** — Claude Code skills (`/understand-chat`, `/understand-diff`, `/understand-explain`, `/understand-onboard`)
+- **understand-anything-plugin/** — Claude Code plugin containing all source code:
+  - **understand-anything-plugin/packages/core** — Shared analysis engine (types, persistence, tree-sitter plugin, LLM prompt templates)
+  - **understand-anything-plugin/packages/dashboard** — React + TypeScript web dashboard (React Flow, Monaco Editor, Zustand, TailwindCSS)
+  - **understand-anything-plugin/src** — Skill TypeScript source for `/understand-chat`, `/understand-diff`, `/understand-explain`, `/understand-onboard`
+  - **understand-anything-plugin/skills** — Skill definitions
+  - **understand-anything-plugin/agents** — Agent definitions
 
 ## Key Commands
 - `pnpm install` — Install all dependencies
@@ -15,9 +18,9 @@ An open-source tool combining LLM intelligence + static analysis to produce inte
 - `pnpm --filter @understand-anything/core test` — Run core tests
 - `pnpm dev:dashboard` — Start dashboard dev server
 
-## Key Commands (updated)
-- `pnpm --filter @understand-anything/skill build` — Build skill package
-- `pnpm --filter @understand-anything/skill test` — Run skill tests
+## Key Commands (plugin)
+- `pnpm --filter @understand-anything/skill build` — Build the plugin package
+- `pnpm --filter @understand-anything/skill test` — Run plugin tests
 
 ## Phase 2 Features
 - Fuzzy search via Fuse.js (SearchEngine in core)

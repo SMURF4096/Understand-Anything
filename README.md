@@ -1,157 +1,206 @@
-# Understand Anything
+<h1 align="center">Understand Anything</h1>
 
-An open-source tool that combines LLM intelligence with static analysis to help anyone understand any codebase — from junior developers to product managers.
+<p align="center">
+  <strong>Turn any codebase into an interactive knowledge graph you can explore, search, and ask questions about.</strong>
+</p>
 
-## Current Status
+<p align="center">
+  <a href="#-quick-start"><img src="https://img.shields.io/badge/Quick_Start-blue?style=for-the-badge" alt="Quick Start" /></a>
+  <a href="https://github.com/Lum1104/Understand-Anything/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License: MIT" /></a>
+  <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-Plugin-8A2BE2?style=for-the-badge" alt="Claude Code Plugin" /></a>
+</p>
 
-**Phase 4 complete.** The core analysis engine, web dashboard, and Claude Code skills are all functional. The project includes a multi-agent `/understand` command, fuzzy and semantic search, schema validation, staleness detection, layer auto-detection, guided learning tours, and an interactive chat interface.
+---
 
-## Features
+**You just joined a new team. The codebase is 200,000 lines of code. Where do you even start?**
 
-### Phase 1 — Foundation
-- **Knowledge Graph** — Automatically maps your codebase into an interactive graph of files, functions, classes, and their relationships
-- **Multi-Panel Dashboard** — Graph view, code viewer, chat, and learn panels in a workspace layout
-- **Natural Language Search** — Search your codebase with plain English: "which parts handle authentication?"
-- **Tree-sitter Analysis** — Accurate structural analysis for TypeScript, JavaScript (more languages coming)
-- **LLM-Powered Summaries** — Every node gets a plain-English description of what it does and why
+Understand Anything is a [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin that analyzes your project with a multi-agent pipeline, builds a knowledge graph of every file, function, class, and dependency, then gives you an interactive dashboard to explore it all visually. Stop reading code blind. Start seeing the big picture.
 
-### Phase 2 — Intelligence
-- **Fuzzy Search** — Fast, typo-tolerant search across all graph nodes via Fuse.js (SearchEngine in core)
-- **Schema Validation** — Zod-based runtime validation when loading knowledge graphs, with detailed error messages
-- **Staleness Detection** — Detects changed files via git diff and incrementally merges graph updates
-- **Layer Auto-Detection** — Heuristic-based layer grouping (API, Service, Data, UI, Utility) with LLM refinement
-- **`/understand-chat` Skill** — Ask questions about your codebase directly in the terminal via Claude Code
-- **Dashboard Chat Panel** — Context-aware Q&A integrated into the web dashboard (Claude API)
-- **Dagre Auto-Layout** — Automatic hierarchical graph layout for clean visualization
-- **Layer Visualization** — Color-coded layer grouping with collapsible groups and a legend panel
+---
 
-### Phase 3 — Learning
-- **Guided Tours** — Auto-generated step-by-step walkthroughs of codebase architecture (Kahn's algorithm)
-- **Language Lessons** — 12 concept patterns explained in context (generics, closures, decorators, etc.)
-- **Persona Selector** — Adaptive UI for junior devs, non-technical stakeholders, and AI-assisted developers
-- **Learn Panel** — Interactive tour mode with graph highlighting in the dashboard
+## 🤔 Why?
 
-### Phase 4 — Skills & Ecosystem
-- **`/understand` Command** — Multi-agent pipeline that analyzes a codebase end-to-end and produces `knowledge-graph.json`
-- **`/understand-diff` Skill** — Analyze git diffs against the knowledge graph for impact and risk assessment
-- **`/understand-explain` Skill** — Deep-dive explanations of any file, function, or module
-- **`/understand-onboard` Skill** — Generate team onboarding guides from the knowledge graph
-- **Plugin Registry** — Community analyzer plugins with auto-discovery
-- **Semantic Search** — Embedding-based vector search with cosine similarity
+Reading code is hard. Understanding a whole codebase is harder. Documentation is always out of date, onboarding takes weeks, and every new feature feels like archaeology.
 
-## Quick Start
+Understand Anything fixes this by combining **LLM intelligence** with **static analysis** to produce a living, explorable map of your project — with plain-English explanations for everything.
 
-### 1. Analyze any codebase (via Claude Code)
+---
+
+## 🎯 Who is this for?
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>👩‍💻 Junior Developers</h3>
+      <p>Stop drowning in unfamiliar code. Get guided tours that walk you through the architecture step by step, with every function and class explained in plain English.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>📋 Product Managers & Designers</h3>
+      <p>Finally understand how the system actually works without reading code. Ask questions like "how does authentication work?" and get clear answers grounded in the real codebase.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>🤖 AI-Assisted Developers</h3>
+      <p>Give your AI tools deep context about your project. Use <code>/understand-diff</code> before code review, <code>/understand-explain</code> to dive into any module, or <code>/understand-chat</code> to reason about architecture.</p>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 🚀 Quick Start
+
+### 1. Install the plugin
 
 ```bash
-# Install the plugin
-claude --plugin-dir /path/to/Understand-Anything/packages/skill
+/plugin marketplace add Lum1104/Understand-Anything
+/plugin install understand-anything
+```
 
-# In any project, run:
+### 2. Analyze your codebase
+
+```bash
 /understand
 ```
 
-This produces `.understand-anything/knowledge-graph.json` in your project.
+A multi-agent pipeline scans your project, extracts every file, function, class, and dependency, then builds a knowledge graph saved to `.understand-anything/knowledge-graph.json`.
 
-### 2. View the dashboard
+### 3. Explore the dashboard
 
 ```bash
-# Clone this repo and install
-git clone https://github.com/Lum1104/Understand-Anything.git
-cd Understand-Anything
-pnpm install
-
-# Start the dashboard (auto-detects .understand-anything/ from your project)
-pnpm dev:dashboard
+/understand-dashboard
 ```
 
-The dashboard dev server automatically looks for `.understand-anything/knowledge-graph.json` in the project root — no manual copying needed.
+An interactive web dashboard opens with your codebase visualized as a graph — color-coded by architectural layer, searchable, and clickable. Select any node to see its code, relationships, and a plain-English explanation.
 
-### 3. Use other skill commands
+### 4. Keep learning
 
 ```bash
-# Ask questions about the codebase
-/understand-chat How does authentication work in this project?
+# Ask anything about the codebase
+/understand-chat How does the payment flow work?
 
-# Analyze impact of current changes
+# Analyze impact of your current changes
 /understand-diff
 
-# Deep-dive into a specific file
+# Deep-dive into a specific file or function
 /understand-explain src/auth/login.ts
 
-# Generate an onboarding guide
+# Generate an onboarding guide for new team members
 /understand-onboard
 ```
 
-## Plugin Installation
+---
 
-The skill commands work in any project via Claude Code:
+## ✨ Features
 
-```bash
-# Option 1: Load for current session
-claude --plugin-dir /path/to/Understand-Anything/packages/skill
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🗺️ Interactive Knowledge Graph</h3>
+      <p>Files, functions, classes, and their relationships visualized with React Flow. Click any node to see its code and connections.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>💬 Plain-English Summaries</h3>
+      <p>Every node described by an LLM so anyone — technical or not — can understand what it does and why it exists.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🧭 Guided Tours</h3>
+      <p>Auto-generated walkthroughs of the architecture, ordered by dependency. Learn the codebase in the right order.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🔍 Fuzzy & Semantic Search</h3>
+      <p>Find anything by name or by meaning. Search "which parts handle auth?" and get relevant results across the graph.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📊 Diff Impact Analysis</h3>
+      <p>See which parts of the system your changes affect before you commit. Understand ripple effects across the codebase.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🎭 Persona-Adaptive UI</h3>
+      <p>The dashboard adjusts its detail level based on who you are — junior dev, PM, or power user.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🏗️ Layer Visualization</h3>
+      <p>Automatic grouping by architectural layer — API, Service, Data, UI, Utility — with color-coded legend.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>📚 Language Concepts</h3>
+      <p>12 programming patterns (generics, closures, decorators, etc.) explained in context wherever they appear.</p>
+    </td>
+  </tr>
+</table>
 
-# Option 2: Add to .claude/settings.json for persistent use
-# (in the project where you cloned Understand-Anything)
+---
+
+## 🔧 Under the Hood
+
+### Multi-Agent Pipeline
+
+The `/understand` command orchestrates 5 specialized agents:
+
+| Agent | Role |
+|-------|------|
+| `project-scanner` | Discover files, detect languages and frameworks |
+| `file-analyzer` | Extract functions, classes, imports; produce graph nodes and edges |
+| `architecture-analyzer` | Identify architectural layers |
+| `tour-builder` | Generate guided learning tours |
+| `graph-reviewer` | Validate graph completeness and referential integrity |
+
+File analyzers run in parallel (up to 3 concurrent). Supports incremental updates — only re-analyzes files that changed since the last run.
+
+### Project Structure
+
+```
+understand-anything-plugin/
+  .claude-plugin/  — Plugin manifest
+  agents/          — Specialized AI agents
+  skills/          — Skill definitions (/understand, /understand-chat, etc.)
+  src/             — TypeScript source (context-builder, diff-analyzer, etc.)
+  packages/
+    core/          — Analysis engine (types, persistence, tree-sitter, search, schema, tours)
+    dashboard/     — React + TypeScript web dashboard
 ```
 
-```json
-{
-  "enabledPlugins": {
-    "understand-anything": {}
-  }
-}
-```
+### Tech Stack
 
-## Commands
+TypeScript, pnpm workspaces, React 18, Vite, TailwindCSS, React Flow, Monaco Editor, Zustand, web-tree-sitter, Fuse.js, Zod, Dagre
+
+### Development Commands
 
 | Command | Description |
 |---------|-------------|
 | `pnpm install` | Install all dependencies |
 | `pnpm --filter @understand-anything/core build` | Build the core package |
 | `pnpm --filter @understand-anything/core test` | Run core tests |
-| `pnpm --filter @understand-anything/skill build` | Build the skill package |
-| `pnpm --filter @understand-anything/skill test` | Run skill tests |
+| `pnpm --filter @understand-anything/skill build` | Build the plugin package |
+| `pnpm --filter @understand-anything/skill test` | Run plugin tests |
 | `pnpm --filter @understand-anything/dashboard build` | Build the dashboard |
 | `pnpm dev:dashboard` | Start dashboard dev server |
 
-## Multi-Agent Architecture
+---
 
-The `/understand` command orchestrates 5 specialized agents in a 7-phase pipeline:
+## 🤝 Contributing
 
-| Agent | Model | Role |
-|-------|-------|------|
-| `project-scanner` | Haiku | Discover files, detect languages and frameworks |
-| `file-analyzer` | Sonnet | Extract functions, classes, imports; produce graph nodes/edges |
-| `architecture-analyzer` | Sonnet | Identify architectural layers (API, Service, Data, UI, etc.) |
-| `tour-builder` | Sonnet | Generate guided learning tours |
-| `graph-reviewer` | Haiku | Validate graph completeness and referential integrity |
+Contributions are welcome! Here's how to get started:
 
-File analyzers run in parallel (up to 3 concurrent) for speed. Supports incremental updates — only re-analyzes files that changed since the last run.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Run the tests (`pnpm --filter @understand-anything/core test`)
+4. Commit your changes and open a pull request
 
-## Project Structure
+Please open an issue first for major changes so we can discuss the approach.
 
-```
-packages/
-  core/        — Analysis engine: types, persistence, tree-sitter, search, schema, staleness, layers, tours
-  dashboard/   — React + TypeScript web dashboard with chat, learn, and persona panels
-  skill/
-    agents/    — Specialized AI agents (scanner, analyzer, architect, tour-builder, reviewer)
-    skills/    — Claude Code skills (/understand, /understand-chat, /understand-diff, etc.)
-```
+---
 
-## Tech Stack
+<p align="center">
+  <strong>Stop reading code blind. Start understanding everything.</strong>
+</p>
 
-- TypeScript, pnpm workspaces
-- React 18, Vite, TailwindCSS
-- React Flow (graph visualization)
-- Monaco Editor (code viewer)
-- Zustand (state management)
-- tree-sitter (static analysis)
-- Fuse.js (fuzzy search)
-- Zod (schema validation)
-- Dagre (graph layout)
-
-## License
-
-MIT
+<p align="center">
+  MIT License &copy; <a href="https://github.com/Lum1104">Lum1104</a>
+</p>

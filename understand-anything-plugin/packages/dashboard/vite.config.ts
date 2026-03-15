@@ -13,10 +13,15 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           if (req.url === "/knowledge-graph.json") {
-            // Look for .understand-anything/knowledge-graph.json up from cwd
+            // GRAPH_DIR env var points to the project being analyzed
+            // Falls back to monorepo root, then public/ (demo)
+            const graphDir = process.env.GRAPH_DIR;
             const candidates = [
+              ...(graphDir
+                ? [path.resolve(graphDir, ".understand-anything/knowledge-graph.json")]
+                : []),
               path.resolve(process.cwd(), ".understand-anything/knowledge-graph.json"),
-              path.resolve(process.cwd(), "../../.understand-anything/knowledge-graph.json"),
+              path.resolve(process.cwd(), "../../../.understand-anything/knowledge-graph.json"),
             ];
             for (const candidate of candidates) {
               if (fs.existsSync(candidate)) {
