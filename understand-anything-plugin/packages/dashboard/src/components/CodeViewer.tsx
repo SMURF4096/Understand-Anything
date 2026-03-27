@@ -27,8 +27,8 @@ export default function CodeViewer() {
           className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border"
           style={{
             color: "var(--color-node-file)",
-            borderColor: "rgba(74,124,155,0.3)",
-            backgroundColor: "rgba(74,124,155,0.1)",
+            borderColor: "color-mix(in srgb, var(--color-node-file) 30%, transparent)",
+            backgroundColor: "color-mix(in srgb, var(--color-node-file) 10%, transparent)",
           }}
         >
           {node.type}

@@ -21,6 +21,33 @@
   --color-border-subtle: rgba(212, 165, 116, 0.12);
   --color-border-medium: rgba(212, 165, 116, 0.25);
 
+  /* Glass */
+  --glass-bg: rgba(20, 20, 20, 0.8);
+  --glass-bg-heavy: rgba(20, 20, 20, 0.95);
+  --glass-border: rgba(212, 165, 116, 0.1);
+  --glass-border-heavy: rgba(212, 165, 116, 0.15);
+
+  /* Scrollbar */
+  --scrollbar-thumb: rgba(212, 165, 116, 0.2);
+  --scrollbar-thumb-hover: rgba(212, 165, 116, 0.35);
+
+  /* Glow */
+  --glow-accent: rgba(212, 165, 116, 0.15);
+  --glow-accent-strong: rgba(212, 165, 116, 0.4);
+  --glow-accent-pulse: rgba(212, 165, 116, 0.6);
+
+  /* Edges */
+  --color-edge: rgba(212, 165, 116, 0.3);
+  --color-edge-dim: rgba(212, 165, 116, 0.08);
+  --color-edge-dot: rgba(212, 165, 116, 0.15);
+
+  /* Layer group (accent-based overlays) */
+  --color-accent-overlay-bg: rgba(212, 165, 116, 0.05);
+  --color-accent-overlay-border: rgba(212, 165, 116, 0.25);
+
+  /* kbd */
+  --kbd-bg: rgba(212, 165, 116, 0.1);
+
   /* Node type colors (muted, refined) */
   --color-node-file: #4a7c9b;
   --color-node-function: #5a9e6f;
@@ -65,15 +92,15 @@ body {
 
 /* Glass utility */
 .glass {
-  background: rgba(20, 20, 20, 0.8);
-  border: 1px solid rgba(212, 165, 116, 0.1);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
 .glass-heavy {
-  background: rgba(20, 20, 20, 0.95);
-  border: 1px solid rgba(212, 165, 116, 0.15);
+  background: var(--glass-bg-heavy);
+  border: 1px solid var(--glass-border-heavy);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -90,7 +117,7 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-accent);
-  background: rgba(212, 165, 116, 0.1);
+  background: var(--kbd-bg);
   border: 1px solid rgba(212, 165, 116, 0.3);
   border-radius: 0.25rem;
   box-shadow: 0 1px 0 rgba(212, 165, 116, 0.2);
@@ -119,10 +146,10 @@ body {
 
 @keyframes accentPulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.4);
+    box-shadow: 0 0 8px var(--glow-accent-strong);
   }
   50% {
-    box-shadow: 0 0 20px 4px rgba(212, 165, 116, 0.15);
+    box-shadow: 0 0 20px var(--glow-accent-pulse);
   }
 }
 
@@ -141,7 +168,7 @@ body {
 
 /* Node selection glow */
 .node-glow {
-  box-shadow: 0 0 20px rgba(212, 165, 116, 0.15);
+  box-shadow: 0 0 20px var(--glow-accent);
 }
 
 /* Diff overlay glow effects */
@@ -169,11 +196,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(212, 165, 116, 0.2);
-  border-radius: 3px;
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 165, 116, 0.35);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Override React Flow dark theme */

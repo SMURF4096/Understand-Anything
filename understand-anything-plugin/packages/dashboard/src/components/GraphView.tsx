@@ -158,11 +158,11 @@ function buildTopologyData(
             strokeWidth: 2.5,
           }
         : diffMode
-          ? { stroke: "rgba(212,165,116,0.08)", strokeWidth: 1 }
-          : { stroke: "rgba(212,165,116,0.3)", strokeWidth: 1.5 },
+          ? { stroke: "var(--color-edge-dim)", strokeWidth: 1 }
+          : { stroke: "var(--color-edge)", strokeWidth: 1.5 },
       labelStyle: diffMode && !isImpacted
-        ? { fill: "rgba(163,151,135,0.3)", fontSize: 10 }
-        : { fill: "#a39787", fontSize: 10 },
+        ? { fill: "var(--color-text-muted)", fontSize: 10 }
+        : { fill: "var(--color-text-secondary)", fontSize: 10 },
     };
   });
 
@@ -262,13 +262,13 @@ function applyLayerGroups(
       style: {
         width: groupWidth,
         height: groupHeight,
-        backgroundColor: "rgba(212,165,116,0.05)",
+        backgroundColor: "var(--color-accent-overlay-bg)",
         borderRadius: 12,
-        border: "2px dashed rgba(212,165,116,0.25)",
+        border: "2px dashed var(--color-accent-overlay-border)",
         padding: 8,
         fontSize: 13,
         fontWeight: 600,
-        color: "#d4a574",
+        color: "var(--color-accent)",
       },
     });
 
@@ -455,11 +455,11 @@ function GraphViewInner() {
         maxZoom={2}
         colorMode="dark"
       >
-        <Background variant={BackgroundVariant.Dots} color="rgba(212,165,116,0.15)" gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} color="var(--color-edge-dot)" gap={20} size={1} />
         <Controls />
         <MiniMap
-          nodeColor="#1a1a1a"
-          maskColor="rgba(10,10,10,0.7)"
+          nodeColor="var(--color-elevated)"
+          maskColor="var(--glass-bg)"
           className="!bg-surface !border !border-border-subtle"
         />
         <TourFitView />
