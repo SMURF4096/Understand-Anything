@@ -158,7 +158,11 @@ describe("PluginRegistry", () => {
     const registry = new PluginRegistry();
     const plugin = createMockPlugin("ts-plugin", ["typescript"]);
     const mockImports: ImportResolution[] = [
-      { importPath: "./utils", resolvedPath: "./utils.ts" },
+      {
+        source: "./utils",
+        resolvedPath: "./utils.ts",
+        specifiers: [],
+      },
     ];
     plugin.resolveImports = () => mockImports;
     registry.register(plugin);
