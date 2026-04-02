@@ -9,9 +9,10 @@ import type { ReactFlowInstance } from "@xyflow/react";
 
 export type Persona = "non-technical" | "junior" | "experienced";
 export type NavigationLevel = "overview" | "layer-detail";
-export type NodeType = "file" | "function" | "class" | "module" | "concept" | "config" | "document" | "service" | "table" | "endpoint" | "pipeline" | "schema" | "resource";
+export type NodeType = "file" | "function" | "class" | "module" | "concept" | "config" | "document" | "service" | "table" | "endpoint" | "pipeline" | "schema" | "resource" | "domain" | "flow" | "step";
 export type Complexity = "simple" | "moderate" | "complex";
-export type EdgeCategory = "structural" | "behavioral" | "data-flow" | "dependencies" | "semantic";
+export type EdgeCategory = "structural" | "behavioral" | "data-flow" | "dependencies" | "semantic" | "infrastructure" | "domain";
+export type ViewMode = "structural" | "domain";
 
 export interface FilterState {
   nodeTypes: Set<NodeType>;
@@ -20,9 +21,9 @@ export interface FilterState {
   edgeCategories: Set<EdgeCategory>;
 }
 
-export const ALL_NODE_TYPES: NodeType[] = ["file", "function", "class", "module", "concept", "config", "document", "service", "table", "endpoint", "pipeline", "schema", "resource"];
+export const ALL_NODE_TYPES: NodeType[] = ["file", "function", "class", "module", "concept", "config", "document", "service", "table", "endpoint", "pipeline", "schema", "resource", "domain", "flow", "step"];
 export const ALL_COMPLEXITIES: Complexity[] = ["simple", "moderate", "complex"];
-export const ALL_EDGE_CATEGORIES: EdgeCategory[] = ["structural", "behavioral", "data-flow", "dependencies", "semantic"];
+export const ALL_EDGE_CATEGORIES: EdgeCategory[] = ["structural", "behavioral", "data-flow", "dependencies", "semantic", "infrastructure", "domain"];
 
 export const EDGE_CATEGORY_MAP: Record<EdgeCategory, string[]> = {
   structural: ["imports", "exports", "contains", "inherits", "implements"],
@@ -30,7 +31,11 @@ export const EDGE_CATEGORY_MAP: Record<EdgeCategory, string[]> = {
   "data-flow": ["reads_from", "writes_to", "transforms", "validates"],
   dependencies: ["depends_on", "tested_by", "configures"],
   semantic: ["related", "similar_to"],
+  infrastructure: ["deploys", "serves", "provisions", "triggers", "migrates", "documents", "routes", "defines_schema"],
+  domain: ["contains_flow", "flow_step", "cross_domain"],
 };
+
+export const DOMAIN_EDGE_TYPES = EDGE_CATEGORY_MAP.domain;
 
 const DEFAULT_FILTERS: FilterState = {
   nodeTypes: new Set<NodeType>(ALL_NODE_TYPES),
@@ -40,7 +45,7 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 /** Categories used for node type filter toggles. Single source of truth for NodeCategory. */
-export type NodeCategory = "code" | "config" | "docs" | "infra" | "data";
+export type NodeCategory = "code" | "config" | "docs" | "infra" | "data" | "domain";
 
 /** Find which layer a node belongs to. Returns layerId or null. */
 function findNodeLayer(graph: KnowledgeGraph, nodeId: string): string | null {
@@ -127,6 +132,16 @@ interface DashboardStore {
   setTourStep: (step: number) => void;
   nextTourStep: () => void;
   prevTourStep: () => void;
+
+  // Domain view
+  viewMode: ViewMode;
+  domainGraph: KnowledgeGraph | null;
+  activeDomainId: string | null;
+
+  setDomainGraph: (graph: KnowledgeGraph) => void;
+  setViewMode: (mode: ViewMode) => void;
+  navigateToDomain: (domainId: string) => void;
+  clearActiveDomain: () => void;
 }
 
 function getSortedTour(graph: KnowledgeGraph): TourStep[] {
@@ -182,7 +197,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
   pathFinderOpen: false,
   reactFlowInstance: null,
 
-  nodeTypeFilters: { code: true, config: true, docs: true, infra: true, data: true },
+  nodeTypeFilters: { code: true, config: true, docs: true, infra: true, data: true, domain: true },
 
   toggleNodeTypeFilter: (category) =>
     set((state) => ({
@@ -196,6 +211,9 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
     const searchEngine = new SearchEngine(graph.nodes);
     const query = get().searchQuery;
     const searchResults = query.trim() ? searchEngine.search(query) : [];
+    const { viewMode, domainGraph, activeDomainId } = get();
+    // Preserve domain view if a domain graph is already loaded
+    const keepDomainView = viewMode === "domain" && domainGraph !== null;
     set({
       graph,
       searchEngine,
@@ -205,6 +223,8 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       selectedNodeId: null,
       focusNodeId: null,
       nodeHistory: [],
+      viewMode: keepDomainView ? "domain" as const : "structural" as const,
+      activeDomainId: keepDomainView ? activeDomainId : null,
     });
   },
 
@@ -441,5 +461,44 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
         ...layerNav,
       });
     }
+  },
+
+  viewMode: "structural",
+  domainGraph: null,
+  activeDomainId: null,
+
+  setDomainGraph: (graph) => {
+    set({ domainGraph: graph });
+  },
+
+  setViewMode: (mode) => {
+    set({
+      viewMode: mode,
+      selectedNodeId: null,
+      focusNodeId: null,
+      codeViewerOpen: false,
+      codeViewerNodeId: null,
+    });
+  },
+
+  navigateToDomain: (domainId) => {
+    const { selectedNodeId, nodeHistory } = get();
+    const newHistory = selectedNodeId
+      ? [...nodeHistory, selectedNodeId].slice(-MAX_HISTORY)
+      : nodeHistory;
+    set({
+      viewMode: "domain" as const,
+      activeDomainId: domainId,
+      focusNodeId: null,
+      nodeHistory: newHistory,
+    });
+  },
+
+  clearActiveDomain: () => {
+    set({
+      activeDomainId: null,
+      selectedNodeId: null,
+      focusNodeId: null,
+    });
   },
 }));

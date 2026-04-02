@@ -57,13 +57,18 @@ export default function PathFinderModal({ isOpen, onClose }: PathFinderModalProp
 
     setSearching(true);
 
-    // Build adjacency list
+    // Build adjacency list (bidirectional traversal for path finding)
     const adjacency = new Map<string, string[]>();
     for (const edge of edges) {
       if (!adjacency.has(edge.source)) {
         adjacency.set(edge.source, []);
       }
       adjacency.get(edge.source)!.push(edge.target);
+      // Also traverse in reverse so we can find paths through backward edges
+      if (!adjacency.has(edge.target)) {
+        adjacency.set(edge.target, []);
+      }
+      adjacency.get(edge.target)!.push(edge.source);
     }
 
     // BFS

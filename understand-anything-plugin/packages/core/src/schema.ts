@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Edge types (26 values across 6 categories)
+// Edge types (29 values across 7 categories)
 export const EdgeTypeSchema = z.enum([
   "imports", "exports", "contains", "inherits", "implements",  // Structural
   "calls", "subscribes", "publishes", "middleware",             // Behavioral
@@ -9,6 +9,7 @@ export const EdgeTypeSchema = z.enum([
   "related", "similar_to",                                      // Semantic
   "deploys", "serves", "provisions", "triggers",               // Infrastructure
   "migrates", "documents", "routes", "defines_schema",         // Schema/Data
+  "contains_flow", "flow_step", "cross_domain",                // Domain
 ]);
 
 // Aliases that LLMs commonly generate instead of canonical node types
@@ -28,10 +29,8 @@ export const NODE_TYPE_ALIASES: Record<string, string> = {
   doc: "document",
   readme: "document",
   docs: "document",
-  workflow: "pipeline",
   job: "pipeline",
   ci: "pipeline",
-  action: "pipeline",
   route: "endpoint",
   api: "endpoint",
   query: "endpoint",
@@ -50,6 +49,12 @@ export const NODE_TYPE_ALIASES: Record<string, string> = {
   protobuf: "schema",
   definition: "schema",
   typedef: "schema",
+  // Domain aliases — "process" intentionally excluded (ambiguous with OS/Node.js process)
+  business_domain: "domain",
+  business_flow: "flow",
+  business_process: "flow",
+  task: "step",
+  business_step: "step",
 };
 
 // Aliases that LLMs commonly generate instead of canonical edge types
@@ -79,6 +84,13 @@ export const EDGE_TYPE_ALIASES: Record<string, string> = {
   triggers_on: "triggers",
   fires: "triggers",
   defines: "defines_schema",
+  // Domain aliases
+  has_flow: "contains_flow",
+  next_step: "flow_step",
+  interacts_with: "cross_domain",
+  // Note: "implemented_by" is intentionally NOT aliased to "implements" —
+  // it inverts edge direction (see commit fd0df15). The LLM should use
+  // "implements" with correct source/target instead.
 };
 
 // Aliases for complexity values LLMs commonly generate
@@ -307,12 +319,21 @@ export function autoFixGraph(data: Record<string, unknown>): {
   return { data: result, issues };
 }
 
+const DomainMetaSchema = z.object({
+  entities: z.array(z.string()).optional(),
+  businessRules: z.array(z.string()).optional(),
+  crossDomainInteractions: z.array(z.string()).optional(),
+  entryPoint: z.string().optional(),
+  entryType: z.enum(["http", "cli", "event", "cron", "manual"]).optional(),
+}).passthrough();
+
 export const GraphNodeSchema = z.object({
   id: z.string(),
   type: z.enum([
     "file", "function", "class", "module", "concept",
     "config", "document", "service", "table", "endpoint",
     "pipeline", "schema", "resource",
+    "domain", "flow", "step",
   ]),
   name: z.string(),
   filePath: z.string().optional(),
@@ -321,7 +342,8 @@ export const GraphNodeSchema = z.object({
   tags: z.array(z.string()),
   complexity: z.enum(["simple", "moderate", "complex"]),
   languageNotes: z.string().optional(),
-});
+  domainMeta: DomainMetaSchema.optional(),
+}).passthrough();
 
 export const GraphEdgeSchema = z.object({
   source: z.string(),

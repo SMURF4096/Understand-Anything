@@ -1,10 +1,11 @@
-// Node types (13 total: 5 code + 8 non-code)
+// Node types (16 total: 5 code + 8 non-code + 3 domain)
 export type NodeType =
   | "file" | "function" | "class" | "module" | "concept"
   | "config" | "document" | "service" | "table" | "endpoint"
-  | "pipeline" | "schema" | "resource";
+  | "pipeline" | "schema" | "resource"
+  | "domain" | "flow" | "step";
 
-// Edge types (26 total in 6 categories: Structural, Behavioral, Data flow, Dependencies, Semantic, Infrastructure/Schema)
+// Edge types (29 total in 7 categories: Structural, Behavioral, Data flow, Dependencies, Semantic, Infrastructure/Schema, Domain)
 export type EdgeType =
   | "imports" | "exports" | "contains" | "inherits" | "implements"  // Structural
   | "calls" | "subscribes" | "publishes" | "middleware"              // Behavioral
@@ -12,9 +13,19 @@ export type EdgeType =
   | "depends_on" | "tested_by" | "configures"                       // Dependencies
   | "related" | "similar_to"                                         // Semantic
   | "deploys" | "serves" | "provisions" | "triggers"                // Infrastructure
-  | "migrates" | "documents" | "routes" | "defines_schema";         // Schema/Data
+  | "migrates" | "documents" | "routes" | "defines_schema"          // Schema/Data
+  | "contains_flow" | "flow_step" | "cross_domain";                 // Domain
 
-// GraphNode with 13 types: 5 code + 8 non-code
+// Optional domain metadata for domain/flow/step nodes
+export interface DomainMeta {
+  entities?: string[];
+  businessRules?: string[];
+  crossDomainInteractions?: string[];
+  entryPoint?: string;
+  entryType?: "http" | "cli" | "event" | "cron" | "manual";
+}
+
+// GraphNode with 16 types: 5 code + 8 non-code + 3 domain
 export interface GraphNode {
   id: string;
   type: NodeType;
@@ -25,6 +36,7 @@ export interface GraphNode {
   tags: string[];
   complexity: "simple" | "moderate" | "complex";
   languageNotes?: string;
+  domainMeta?: DomainMeta;
 }
 
 // GraphEdge with rich relationship modeling

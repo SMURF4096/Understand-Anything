@@ -1,3 +1,12 @@
+---
+name: file-analyzer
+description: |
+  Analyzes batches of source files to produce knowledge graph nodes and edges.
+  Extracts file structure, functions, classes, and relationships using a two-phase
+  approach: structural extraction script followed by LLM semantic analysis.
+model: inherit
+---
+
 # File Analyzer — Prompt Template
 
 > Used by `/understand` Phase 2. Dispatch as a subagent with this full content as the prompt.
@@ -14,7 +23,7 @@ For each file in the batch provided to you, extract structural data via a script
 
 ## Phase 1 -- Structural Extraction Script
 
-Write a script that reads each file in your batch and extracts deterministic structural information. Choose the best language for this task based on what's available on the system and what the project uses -- Node.js, Python, or bash with grep are all valid choices.
+Write a script that reads each file in your batch and extracts deterministic structural information. Prefer Node.js for the script; fall back to Python if Node.js is unavailable. Avoid bash for complex extraction — it handles multiline patterns poorly.
 
 ### Script Requirements
 
@@ -384,12 +393,12 @@ Using the script's structural data and file categories, create edges:
 
 | Edge Type | When to Create | Weight | Direction |
 |---|---|---|---|
-| `contains` | File contains a function or class node you created | `1.0` | `forward` |
+| `contains` | File contains a function or class node you created (use for ALL function/class nodes) | `1.0` | `forward` |
 | `imports` | File imports from another project file (use `batchImportData[filePath]` from input JSON — external imports already filtered out) | `0.7` | `forward` |
 | `calls` | A function in this file calls a function in another file (infer from imports + function names when confident) | `0.8` | `forward` |
 | `inherits` | A class extends another class in the project | `0.9` | `forward` |
 | `implements` | A class implements an interface in the project | `0.9` | `forward` |
-| `exports` | File exports a function or class node you created | `0.8` | `forward` |
+| `exports` | File exports a function or class node you created (only for exported items — use IN ADDITION to `contains`, not instead of it) | `0.8` | `forward` |
 | `depends_on` | File has runtime dependency on another project file (broader than imports -- includes dynamic requires, lazy loads) | `0.6` | `forward` |
 | `tested_by` | Source file is tested by a test file (infer from test file imports and naming conventions) | `0.5` | `forward` |
 
@@ -448,7 +457,7 @@ You MUST use these exact prefixes for node IDs:
 
 ## Output Format
 
-Produce a single, valid JSON block. Validate it mentally before writing -- malformed JSON breaks the entire pipeline.
+Produce a single, valid JSON block. Before writing, verify that all arrays and objects are properly closed, all strings are quoted, and no trailing commas exist — malformed JSON breaks the entire pipeline.
 
 ```json
 {
@@ -544,7 +553,7 @@ Produce a single, valid JSON block. Validate it mentally before writing -- malfo
 
 **Required fields for every node:**
 - `id` (string) -- must follow the ID conventions above
-- `type` (string) -- one of: `file`, `function`, `class`, `config`, `document`, `service`, `table`, `endpoint`, `pipeline`, `schema`, `resource` (11 of the 13 schema types; `module` and `concept` are reserved for higher-level analysis agents)
+- `type` (string) -- one of: `file`, `function`, `class`, `config`, `document`, `service`, `table`, `endpoint`, `pipeline`, `schema`, `resource` (11 types; `module`, `concept`, `domain`, `flow`, `step` are reserved for other agents)
 - `name` (string) -- display name (filename for file nodes, function/class name for others)
 - `summary` (string) -- 1-2 sentence description, NEVER empty
 - `tags` (string[]) -- 3-5 lowercase hyphenated tags, NEVER empty
@@ -561,38 +570,12 @@ Produce a single, valid JSON block. Validate it mentally before writing -- malfo
 - `source` (string) -- must reference an existing node `id` in your output or a known node from the project
 - `target` (string) -- must reference an existing node `id` in your output or a known node from the project
 - `type` (string) -- must be one of the valid edge types listed above
-- `direction` (string) -- always `forward`
+- `direction` (string) -- always `"forward"` for this agent (the schema supports `backward` and `bidirectional` but file-analyzer edges are always forward)
 - `weight` (number) -- must match the weight specified in the edge type tables
 
-## Language and Framework Quick Reference
+## Edge Signal Quick Reference
 
-Use these hints to improve tag and edge accuracy for common patterns. Your training knowledge covers these — this is a fast lookup for the most impactful signals.
-
-**Tag signals:**
-
-| Signal | Tags to apply |
-|---|---|
-| File in `hooks/`, exports a function starting with `use` | `hook`, `service` |
-| File in `contexts/` or `context/`, exports a Provider component | `service`, `state` |
-| File in `pages/` or `views/` | `ui`, `routing` |
-| File in `store/`, `slices/`, `reducers/`, `state/` | `state` |
-| File in `services/`, `api/`, `client/` | `service` |
-| `__init__.py` at a package root with re-exports | `entry-point`, `barrel` |
-| `manage.py` at the project root | `entry-point` |
-| `mod.rs` in a directory | `barrel` |
-| `main.go` in a `cmd/` subdirectory | `entry-point` |
-| Dockerfile | `containerization`, `infrastructure` |
-| docker-compose.yml | `orchestration`, `infrastructure` |
-| .github/workflows/*.yml | `ci-cd`, `deployment` |
-| *.sql in migrations/ | `database`, `migration` |
-| *.graphql or *.gql | `api-schema`, `schema-definition` |
-| *.proto | `schema-definition`, `data-pipeline` |
-| *.tf | `infrastructure`, `deployment` |
-| README.md | `documentation`, `entry-point` |
-| CHANGELOG.md | `documentation`, `versioning` |
-| .env or .env.example | `configuration`, `security` |
-
-**Edge signals:**
+Use these hints for common edge patterns:
 
 | Pattern | Edge to create |
 |---|---|
@@ -613,7 +596,7 @@ Use these hints to improve tag and edge accuracy for common patterns. Your train
 - NEVER invent file paths. Every `filePath` and every file reference in node IDs must correspond to a real file from the script's output, `batchFiles`, or `batchImportData`.
 - NEVER create edges to nodes that do not exist. Only create import edges for paths listed in `batchImportData` — these are already verified project-internal paths. For non-code edges (configures, documents, deploys, etc.), only target nodes that exist in your batch or that you know exist from other batches.
 - ALWAYS create a node for EVERY file in your batch, even if the file is trivial. Use the appropriate node type based on fileCategory.
-- Only create `function:` and `class:` nodes for significant code elements (see significance filter above).
+- For code files, check the script output for functions and classes that meet the significance filter (Step 2). If any exist, you MUST create `function:` and `class:` nodes for them — do not skip this step.
 - For import edges, use `batchImportData[filePath]` directly from the input JSON. Do NOT attempt to resolve import paths yourself -- the project scanner already did this deterministically.
 - NEVER produce duplicate node IDs within your batch.
 - NEVER create self-referencing edges (where source equals target).

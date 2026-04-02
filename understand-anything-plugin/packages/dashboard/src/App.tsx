@@ -3,6 +3,7 @@ import { validateGraph } from "@understand-anything/core/schema";
 import type { GraphIssue } from "@understand-anything/core/schema";
 import { useDashboardStore } from "./store";
 import GraphView from "./components/GraphView";
+import DomainGraphView from "./components/DomainGraphView";
 import CodeViewer from "./components/CodeViewer";
 import SearchBar from "./components/SearchBar";
 import NodeInfo from "./components/NodeInfo";
@@ -83,6 +84,10 @@ function Dashboard({ accessToken }: { accessToken: string }) {
   const [graphIssues, setGraphIssues] = useState<GraphIssue[]>([]);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [metaTheme, setMetaTheme] = useState<ThemeConfig | null>(null);
+  const viewMode = useDashboardStore((s) => s.viewMode);
+  const setViewMode = useDashboardStore((s) => s.setViewMode);
+  const domainGraph = useDashboardStore((s) => s.domainGraph);
+  const setDomainGraph = useDashboardStore((s) => s.setDomainGraph);
 
   useEffect(() => {
     fetch(tokenUrl("/meta.json", accessToken))
@@ -264,6 +269,26 @@ function Dashboard({ accessToken }: { accessToken: string }) {
       });
   }, [setDiffOverlay]);
 
+  useEffect(() => {
+    fetch(tokenUrl("/domain-graph.json", accessToken))
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data: unknown) => {
+        if (!data) return;
+        const result = validateGraph(data);
+        if (result.success && result.data) {
+          setDomainGraph(result.data);
+        } else if (result.fatal) {
+          console.warn(`[domain-graph] validation failed: ${result.fatal}`);
+        }
+      })
+      .catch(() => {
+        // Silently ignore — domain graph is optional
+      });
+  }, [setDomainGraph]);
+
   // Determine sidebar content
   // NodeInfo always takes priority when a node is selected.
   // Learn mode adds LearnPanel below it; otherwise ProjectOverview shows when idle.
@@ -288,6 +313,37 @@ function Dashboard({ accessToken }: { accessToken: string }) {
           </h1>
           <div className="w-px h-5 bg-border-subtle" />
           <PersonaSelector />
+          {graph && domainGraph && (
+            <>
+              <div className="w-px h-5 bg-border-subtle" />
+              <div className="flex items-center bg-elevated rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("domain")}
+                  title="Switch to domain view"
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === "domain"
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  Domain
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("structural")}
+                  title="Switch to structural view"
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === "structural"
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  Structural
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Middle — scrollable legends */}
@@ -301,6 +357,7 @@ function Dashboard({ accessToken }: { accessToken: string }) {
                 { key: "docs", label: "Docs", color: "var(--color-node-document)" },
                 { key: "infra", label: "Infra", color: "var(--color-node-service)" },
                 { key: "data", label: "Data", color: "var(--color-node-table)" },
+                { key: "domain", label: "Domain", color: "var(--color-node-concept)" },
               ] as const).map((cat) => (
                 <button
                   key={cat.key}
@@ -393,7 +450,11 @@ function Dashboard({ accessToken }: { accessToken: string }) {
       <div className="flex-1 flex min-h-0 relative">
         {/* Graph area */}
         <div className="flex-1 min-w-0 min-h-0 relative">
-          <GraphView />
+          {viewMode === "domain" && domainGraph ? (
+            <DomainGraphView />
+          ) : (
+            <GraphView />
+          )}
           <div className="absolute top-3 right-3 text-sm text-text-muted/60 pointer-events-none select-none">
             Press <kbd className="kbd">?</kbd> for keyboard shortcuts
           </div>

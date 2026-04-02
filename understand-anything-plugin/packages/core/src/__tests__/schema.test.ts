@@ -686,11 +686,11 @@ describe("Extended node/edge types", () => {
     }
   });
 
-  it("auto-fixes new node type aliases: container->service, doc->document, workflow->pipeline, etc.", () => {
+  it("auto-fixes new node type aliases: container->service, doc->document, business_flow->flow, etc.", () => {
     const aliases: Record<string, string> = {
       container: "service",
       doc: "document",
-      workflow: "pipeline",
+      business_flow: "flow",
       route: "endpoint",
       setting: "config",
       infra: "resource",

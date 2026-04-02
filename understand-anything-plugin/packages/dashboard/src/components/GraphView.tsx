@@ -56,6 +56,7 @@ const NODE_TYPE_TO_CATEGORY: Record<NodeType, NodeCategory> = {
   document: "docs",
   service: "infra", resource: "infra", pipeline: "infra",
   table: "data", endpoint: "data", schema: "data",
+  domain: "domain", flow: "domain", step: "domain",
 } as const;
 
 // ── Helper components that must live inside <ReactFlow> ────────────────
@@ -98,7 +99,9 @@ function SelectedNodeFitView() {
 
   useEffect(() => {
     if (selectedNodeId && selectedNodeId !== prevRef.current) {
-      requestAnimationFrame(() => {
+      // Delay slightly so this runs after any layer-level fitView triggered
+      // by navigateToNodeInLayer (which also changes activeLayerId).
+      const timer = setTimeout(() => {
         fitView({
           nodes: [{ id: selectedNodeId }],
           duration: 500,
@@ -106,7 +109,9 @@ function SelectedNodeFitView() {
           maxZoom: 1.2,
           minZoom: 0.01,
         });
-      });
+      }, 100);
+      prevRef.current = selectedNodeId;
+      return () => clearTimeout(timer);
     }
     prevRef.current = selectedNodeId;
   }, [selectedNodeId, fitView]);
@@ -233,20 +238,33 @@ function useLayerDetailTopology() {
 
     const layerNodeIds = new Set(activeLayer.nodeIds);
 
-    // All top-level (file-level) node types that should appear in the graph.
-    // This includes the 8 new non-code types plus the original "file" type.
-    const fileLevelTypes = new Set([
-      "file", "config", "document", "service", "table",
+    // Expand layer membership to include sub-file nodes (function/class) whose
+    // parent file is in this layer. These nodes aren't in layer.nodeIds directly
+    // but belong to the layer via their "contains" edge from a file node.
+    const expandedLayerNodeIds = new Set(layerNodeIds);
+    for (const edge of graph.edges) {
+      if (edge.type === "contains" && layerNodeIds.has(edge.source)) {
+        expandedLayerNodeIds.add(edge.target);
+      }
+    }
+
+    // All node types visible at each persona level (single source of truth).
+    // Sub-file types (function, class) are only shown for junior/experienced.
+    const subFileTypes = new Set(["function", "class"]);
+    const allVisibleTypes = new Set([
+      "file", "module", "concept",
+      "config", "document", "service", "table",
       "endpoint", "pipeline", "schema", "resource",
+      "domain", "flow", "step",
+      "function", "class",
     ]);
 
-    // Non-technical persona: show module, concept, and file-level types (hide function/class)
-    // Junior/experienced persona: show everything including function/class
-    let filteredGraphNodes = persona === "non-technical"
-      ? graph.nodes.filter(
-          (n) => layerNodeIds.has(n.id) && (n.type === "concept" || n.type === "module" || fileLevelTypes.has(n.type)),
-        )
-      : graph.nodes.filter((n) => layerNodeIds.has(n.id) && (fileLevelTypes.has(n.type) || n.type === "module" || n.type === "concept" || n.type === "function" || n.type === "class"));
+    let filteredGraphNodes = graph.nodes.filter((n) => {
+      if (!expandedLayerNodeIds.has(n.id)) return false;
+      if (!allVisibleTypes.has(n.type)) return false;
+      if (persona === "non-technical" && subFileTypes.has(n.type)) return false;
+      return true;
+    });
 
     // Apply node type category filters
     filteredGraphNodes = filteredGraphNodes.filter((n) => {

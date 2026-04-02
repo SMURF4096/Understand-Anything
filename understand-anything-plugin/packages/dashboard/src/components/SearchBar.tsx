@@ -7,6 +7,17 @@ const typeBadgeColors: Record<string, string> = {
   class: "text-node-class border border-node-class/30 bg-node-class/10",
   module: "text-node-module border border-node-module/30 bg-node-module/10",
   concept: "text-node-concept border border-node-concept/30 bg-node-concept/10",
+  config: "text-node-config border border-node-config/30 bg-node-config/10",
+  document: "text-node-document border border-node-document/30 bg-node-document/10",
+  service: "text-node-service border border-node-service/30 bg-node-service/10",
+  table: "text-node-table border border-node-table/30 bg-node-table/10",
+  endpoint: "text-node-endpoint border border-node-endpoint/30 bg-node-endpoint/10",
+  pipeline: "text-node-pipeline border border-node-pipeline/30 bg-node-pipeline/10",
+  schema: "text-node-schema border border-node-schema/30 bg-node-schema/10",
+  resource: "text-node-resource border border-node-resource/30 bg-node-resource/10",
+  domain: "text-node-concept border border-node-concept/30 bg-node-concept/10",
+  flow: "text-node-pipeline border border-node-pipeline/30 bg-node-pipeline/10",
+  step: "text-node-function border border-node-function/30 bg-node-function/10",
 };
 
 export default function SearchBar() {

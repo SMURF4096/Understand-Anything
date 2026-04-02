@@ -181,8 +181,10 @@ export default function ExportMenu() {
 
     try {
       // Apply persona and filters to create filtered graph
+      // Non-technical persona: hide function/class sub-nodes, keep everything else
+      const subFileTypes = new Set(["function", "class"]);
       let filteredGraphNodes = persona === "non-technical"
-        ? graph.nodes.filter((n) => n.type === "concept" || n.type === "module" || n.type === "file")
+        ? graph.nodes.filter((n) => !subFileTypes.has(n.type))
         : graph.nodes;
 
       filteredGraphNodes = filterNodes(filteredGraphNodes, graph.layers ?? [], filters);

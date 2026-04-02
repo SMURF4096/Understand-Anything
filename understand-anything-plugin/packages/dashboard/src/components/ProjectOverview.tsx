@@ -47,11 +47,12 @@ export default function ProjectOverview() {
 
   // Category breakdowns
   const categoryBreakdown = [
-    { label: "Code", color: "var(--color-node-file)", count: (typeCounts["file"] ?? 0) + (typeCounts["function"] ?? 0) + (typeCounts["class"] ?? 0) },
+    { label: "Code", color: "var(--color-node-file)", count: (typeCounts["file"] ?? 0) + (typeCounts["function"] ?? 0) + (typeCounts["class"] ?? 0) + (typeCounts["module"] ?? 0) + (typeCounts["concept"] ?? 0) },
     { label: "Config", color: "var(--color-node-config)", count: typeCounts["config"] ?? 0 },
     { label: "Docs", color: "var(--color-node-document)", count: typeCounts["document"] ?? 0 },
     { label: "Infra", color: "var(--color-node-service)", count: (typeCounts["service"] ?? 0) + (typeCounts["resource"] ?? 0) + (typeCounts["pipeline"] ?? 0) },
     { label: "Data", color: "var(--color-node-table)", count: (typeCounts["table"] ?? 0) + (typeCounts["endpoint"] ?? 0) + (typeCounts["schema"] ?? 0) },
+    { label: "Domain", color: "var(--color-node-concept)", count: (typeCounts["domain"] ?? 0) + (typeCounts["flow"] ?? 0) + (typeCounts["step"] ?? 0) },
   ];
   const hasNonCodeNodes = categoryBreakdown.some((c) => c.label !== "Code" && c.count > 0);
 
