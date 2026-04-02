@@ -83,6 +83,10 @@ function Dashboard({ accessToken }: { accessToken: string }) {
   const [graphIssues, setGraphIssues] = useState<GraphIssue[]>([]);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const [metaTheme, setMetaTheme] = useState<ThemeConfig | null>(null);
+  const viewMode = useDashboardStore((s) => s.viewMode);
+  const setViewMode = useDashboardStore((s) => s.setViewMode);
+  const domainGraph = useDashboardStore((s) => s.domainGraph);
+  const setDomainGraph = useDashboardStore((s) => s.setDomainGraph);
 
   useEffect(() => {
     fetch(tokenUrl("/meta.json", accessToken))
@@ -264,6 +268,24 @@ function Dashboard({ accessToken }: { accessToken: string }) {
       });
   }, [setDiffOverlay]);
 
+  useEffect(() => {
+    fetch(tokenUrl("/domain-graph.json", accessToken))
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data: unknown) => {
+        if (!data) return;
+        const result = validateGraph(data);
+        if (result.success && result.data) {
+          setDomainGraph(result.data);
+        }
+      })
+      .catch(() => {
+        // Silently ignore — domain graph is optional
+      });
+  }, [setDomainGraph]);
+
   // Determine sidebar content
   // NodeInfo always takes priority when a node is selected.
   // Learn mode adds LearnPanel below it; otherwise ProjectOverview shows when idle.
@@ -288,6 +310,33 @@ function Dashboard({ accessToken }: { accessToken: string }) {
           </h1>
           <div className="w-px h-5 bg-border-subtle" />
           <PersonaSelector />
+          {graph && domainGraph && (
+            <>
+              <div className="w-px h-5 bg-border-subtle" />
+              <div className="flex items-center bg-elevated rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode("domain")}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === "domain"
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  Domain
+                </button>
+                <button
+                  onClick={() => setViewMode("structural")}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    viewMode === "structural"
+                      ? "bg-accent/20 text-accent"
+                      : "text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  Structural
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Middle — scrollable legends */}
