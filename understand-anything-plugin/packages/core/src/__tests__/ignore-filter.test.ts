@@ -26,9 +26,12 @@ describe("IgnoreFilter", () => {
       expect(DEFAULT_IGNORE_PATTERNS).toContain(".git/");
     });
 
-    it("contains bin and obj for .NET", () => {
-      expect(DEFAULT_IGNORE_PATTERNS).toContain("bin/");
+    it("contains obj for .NET", () => {
       expect(DEFAULT_IGNORE_PATTERNS).toContain("obj/");
+    });
+
+    it("does not contain bin (used by Node/Ruby CLI launchers)", () => {
+      expect(DEFAULT_IGNORE_PATTERNS).not.toContain("bin/");
     });
 
     it("contains build output directories", () => {
@@ -45,7 +48,6 @@ describe("IgnoreFilter", () => {
       expect(filter.isIgnored("node_modules/foo/bar.js")).toBe(true);
       expect(filter.isIgnored("dist/index.js")).toBe(true);
       expect(filter.isIgnored(".git/config")).toBe(true);
-      expect(filter.isIgnored("bin/Debug/app.dll")).toBe(true);
       expect(filter.isIgnored("obj/Release/net8.0/app.dll")).toBe(true);
     });
 

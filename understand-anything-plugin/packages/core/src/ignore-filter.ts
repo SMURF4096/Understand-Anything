@@ -24,7 +24,6 @@ export const DEFAULT_IGNORE_PATTERNS: string[] = [
   ".cache/",
   ".turbo/",
   "target/",
-  "bin/",
   "obj/",
 
   // Lock files
