@@ -1,90 +1,42 @@
 ---
-const structuralVideoUrl = import.meta.env.VITE_STRUCTURAL_VIDEO_URL;
-const domainVideoUrl = import.meta.env.VITE_DOMAIN_VIDEO_URL;
+const base = import.meta.env.BASE_URL;   /* /Understand-Anything/ in prod */
+const demoUrl = `${base}demo/index.html`;
 ---
 
-<!-- Structural: table stakes -->
-<section class="showcase showcase--structural">
-  <span class="showcase-label reveal">Structural View</span>
+<!-- Live Demo -->
+<section class="showcase showcase--demo">
+  <span class="showcase-label showcase-label--accent reveal">Live Demo</span>
   <h2 class="showcase-heading reveal">
-    Yes, we do <span style="display:inline;background:linear-gradient(135deg,#c9867a,#b8865c,#d4a574);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">structure</span> too
-  </h2>
-  <p class="showcase-desc reveal">
-    Explore every file, function, and dependency as an interactive graph.
-    Click to drill down, search to find anything, filter by type or complexity.
-    But that's just the map &mdash; not the story.
-  </p>
-  <div class="showcase-frame reveal reveal-delay-1">
-    <div class="showcase-titlebar">
-      <span class="dot red"></span>
-      <span class="dot yellow"></span>
-      <span class="dot green"></span>
-      <span class="showcase-titlebar-text">Structural Graph</span>
-    </div>
-    {structuralVideoUrl ? (
-      <video
-        src={structuralVideoUrl}
-        autoplay
-        loop
-        muted
-        playsinline
-        class="showcase-media"
-      />
-    ) : (
-      <img
-        src="/Understand-Anything/images/overview-structural.gif"
-        alt="Structural graph — explore files, functions, classes and their relationships"
-        class="showcase-media"
-        loading="lazy"
-      />
-    )}
-  </div>
-  <div class="showcase-features reveal reveal-delay-2">
-    <span class="showcase-pill">Hierarchical drill-down</span>
-    <span class="showcase-pill">Fuzzy search</span>
-    <span class="showcase-pill">Filter by type</span>
-    <span class="showcase-pill">26+ file types</span>
-  </div>
-</section>
-
-<!-- Business Knowledge: the star -->
-<section class="showcase showcase--domain">
-  <span class="showcase-label showcase-label--accent reveal">Business Knowledge Mode</span>
-  <h2 class="showcase-heading reveal">
-    Now see what the code is <span style="display:inline;background:linear-gradient(135deg,#b8865c,#d4a574);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">for</span>
+    See what your code is <span style="display:inline;background:linear-gradient(135deg,#b8865c,#d4a574);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">really</span> doing
   </h2>
   <p class="showcase-desc showcase-desc--wide reveal">
-    This is what makes us different. Switch to business knowledge mode and watch
-    your code transform into something readable &mdash; authentication flows,
-    payment pipelines, user lifecycles. Not files and functions.
-    <strong>Domains, processes, and the logic that drives your product.</strong>
+    Explore every file, function, and dependency &mdash; or switch to <span style="display:inline;background:linear-gradient(135deg,#b8865c,#d4a574);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">business
+    knowledge</span> mode and watch your code transform into authentication flows,
+    payment pipelines, and user lifecycles. Not just a map.
+    <strong>The story behind your codebase, fully interactive.</strong>
   </p>
   <div class="showcase-frame showcase-frame--featured reveal reveal-delay-1">
     <div class="showcase-titlebar">
       <span class="dot red"></span>
       <span class="dot yellow"></span>
       <span class="dot green"></span>
-      <span class="showcase-titlebar-text">Business Knowledge Graph</span>
+      <span class="showcase-titlebar-text">Interactive Dashboard</span>
     </div>
-    {domainVideoUrl ? (
-      <video
-        src={domainVideoUrl}
-        autoplay
-        loop
-        muted
-        playsinline
-        class="showcase-media"
-      />
-    ) : (
-      <img
-        src="/Understand-Anything/images/overview-domain.gif"
-        alt="Domain graph — business domains, flows, and process steps"
-        class="showcase-media"
+    <div class="showcase-iframe-wrap">
+      <iframe
+        src={demoUrl}
+        title="Understand Anything — live demo"
+        class="showcase-iframe"
         loading="lazy"
-      />
-    )}
+        sandbox="allow-scripts allow-same-origin"
+      ></iframe>
+    </div>
   </div>
   <div class="showcase-features reveal reveal-delay-2">
+    <span class="showcase-pill">Hierarchical drill-down</span>
+    <span class="showcase-pill">Fuzzy search</span>
+    <span class="showcase-pill">Filter by type</span>
+    <span class="showcase-pill">26+ file types</span>
     <span class="showcase-pill showcase-pill--accent">Domain mapping</span>
     <span class="showcase-pill showcase-pill--accent">Business flows</span>
     <span class="showcase-pill showcase-pill--accent">Process steps</span>
@@ -100,8 +52,9 @@ const domainVideoUrl = import.meta.env.VITE_DOMAIN_VIDEO_URL;
     text-align: center;
   }
 
-  .showcase--domain {
+  .showcase--demo {
     padding: 8rem 2rem 6rem;
+    max-width: 1400px;
   }
 
   /* Section label */
@@ -199,6 +152,22 @@ const domainVideoUrl = import.meta.env.VITE_DOMAIN_VIDEO_URL;
     display: block;
   }
 
+  /* Iframe embed */
+  .showcase-iframe-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #0a0a0a;
+  }
+
+  .showcase-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
   /* Feature pills below frame */
   .showcase-features {
     display: flex;
@@ -228,8 +197,9 @@ const domainVideoUrl = import.meta.env.VITE_DOMAIN_VIDEO_URL;
   /* Responsive */
   @media (max-width: 768px) {
     .showcase { padding: 4rem 1rem 2rem; }
-    .showcase--domain { padding: 4rem 1rem 4rem; }
+    .showcase--demo { padding: 4rem 1rem 4rem; }
     .showcase-features { gap: 0.5rem; }
     .showcase-pill { font-size: 0.7rem; padding: 0.25rem 0.65rem; }
+    .showcase-iframe-wrap { aspect-ratio: 4 / 3; }
   }
 </style>
