@@ -248,6 +248,31 @@ Fetch and follow instructions from https://raw.githubusercontent.com/Lum1104/Und
 
 ---
 
+## 📦 チームでグラフを共有する
+
+グラフは単なる JSON ファイルです——**一度コミットすれば、チームメンバーはパイプラインを実行せずに済みます**。オンボーディング、PR レビュー、docs-as-code ワークフローに最適です。
+
+> **例：** [GoogleCloudPlatform/microservices-demo（fork）](https://github.com/Lum1104/microservices-demo) —— コミット済みのグラフを含む Go / Java / Python / Node のリファレンスプロジェクト。
+
+**コミット対象：** `.understand-anything/` 内のすべてのファイル。ただし `intermediate/` と `diff-overlay.json` は除きます（これらはローカルの一時ファイルです）。
+
+```gitignore
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+```
+
+**最新状態を保つ：** `/understand --auto-update` を有効にすると、post-commit フックがグラフを増分的に更新し、各コミットに対応するグラフが揃います。またはリリース前に `/understand` を手動で再実行します。
+
+**大きなグラフ（10 MB 以上）：** **git-lfs** で管理します。
+
+```bash
+git lfs install
+git lfs track ".understand-anything/*.json"
+git add .gitattributes .understand-anything/
+```
+
+---
+
 ## 🔧 内部の仕組み
 
 ### マルチエージェントパイプライン

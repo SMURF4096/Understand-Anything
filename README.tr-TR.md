@@ -248,6 +248,31 @@ Fetch and follow instructions from https://raw.githubusercontent.com/Lum1104/Und
 
 ---
 
+## 📦 Grafı Ekibinizle Paylaşın
+
+Graf yalnızca bir JSON dosyasıdır — **bir kez commit'leyin, ekip arkadaşlarınız pipeline'ı çalıştırmadan kullansın**. Yeni üye oryantasyonu, PR incelemeleri ve docs-as-code iş akışları için idealdir.
+
+> **Örnek:** [GoogleCloudPlatform/microservices-demo (fork)](https://github.com/Lum1104/microservices-demo) — commit'lenmiş grafı içeren Go / Java / Python / Node çok dilli referans projesi.
+
+**Neyi commit'leyin:** `.understand-anything/` içindeki her şey, *ancak* `intermediate/` ve `diff-overlay.json` hariç (bunlar yerel geçici dosyalardır).
+
+```gitignore
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+```
+
+**Güncel tutun:** `/understand --auto-update` etkinleştirin — bir post-commit kancası grafı artımlı olarak yamalar, böylece her commit eşleşen bir grafla birlikte gelir. Veya sürümden önce `/understand` komutunu elle yeniden çalıştırın.
+
+**Büyük graflar (10 MB+):** **git-lfs** ile takip edin.
+
+```bash
+git lfs install
+git lfs track ".understand-anything/*.json"
+git add .gitattributes .understand-anything/
+```
+
+---
+
 ## 🔧 Kaputun Altında
 
 ### Çok-Ajan Hattı

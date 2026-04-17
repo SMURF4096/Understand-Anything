@@ -247,6 +247,31 @@ Fetch and follow instructions from https://raw.githubusercontent.com/Lum1104/Und
 
 ---
 
+## 📦 팀과 그래프 공유하기
+
+그래프는 단지 JSON 파일입니다 — **한 번만 커밋하면 팀원은 파이프라인을 건너뛸 수 있습니다**. 온보딩, PR 리뷰, docs-as-code 워크플로에 적합합니다.
+
+> **예시:** [GoogleCloudPlatform/microservices-demo (fork)](https://github.com/Lum1104/microservices-demo) — 커밋된 그래프를 포함한 Go / Java / Python / Node 레퍼런스 프로젝트.
+
+**커밋할 대상:** `.understand-anything/` 내부의 모든 파일. 단, `intermediate/` 와 `diff-overlay.json` 은 제외합니다 (이들은 로컬 임시 파일입니다).
+
+```gitignore
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+```
+
+**최신 상태 유지:** `/understand --auto-update` 를 활성화하면 post-commit 훅이 그래프를 증분 업데이트하여 각 커밋마다 일치하는 그래프가 유지됩니다. 또는 릴리스 전에 `/understand` 를 수동으로 다시 실행하세요.
+
+**대용량 그래프 (10 MB 이상):** **git-lfs** 로 추적합니다.
+
+```bash
+git lfs install
+git lfs track ".understand-anything/*.json"
+git add .gitattributes .understand-anything/
+```
+
+---
+
 ## 🔧 작동 원리
 
 ### 멀티 에이전트 파이프라인

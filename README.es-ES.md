@@ -247,6 +247,31 @@ Fetch and follow instructions from https://raw.githubusercontent.com/Lum1104/Und
 
 ---
 
+## 📦 Comparte el Grafo con tu Equipo
+
+El grafo es solo JSON — **confírmalo una vez y tus compañeros se saltan el pipeline**. Ideal para onboarding, revisiones de PR y flujos docs-as-code.
+
+> **Ejemplo:** [GoogleCloudPlatform/microservices-demo (fork)](https://github.com/Lum1104/microservices-demo) — referencia políglota (Go / Java / Python / Node) con el grafo ya confirmado.
+
+**Qué confirmar:** todo lo que hay en `.understand-anything/` *excepto* `intermediate/` y `diff-overlay.json` (archivos temporales locales).
+
+```gitignore
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+```
+
+**Mantenlo al día:** activa `/understand --auto-update` — un hook post-commit parchea el grafo de forma incremental, así cada commit llega con su grafo correspondiente. O vuelve a ejecutar `/understand` manualmente antes de cada release.
+
+**Grafos grandes (10 MB o más):** úsalos con **git-lfs**.
+
+```bash
+git lfs install
+git lfs track ".understand-anything/*.json"
+git add .gitattributes .understand-anything/
+```
+
+---
+
 ## 🔧 Bajo el Capó
 
 ### Pipeline Multi-Agente

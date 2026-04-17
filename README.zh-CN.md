@@ -247,6 +247,31 @@ Fetch and follow instructions from https://raw.githubusercontent.com/Lum1104/Und
 
 ---
 
+## 📦 与团队共享知识图谱
+
+图谱就是一份 JSON 文件——**提交一次，团队成员就可以跳过整条流水线**。适合新人上手、PR 评审和 docs-as-code 工作流。
+
+> **示例：** [GoogleCloudPlatform/microservices-demo（fork）](https://github.com/Lum1104/microservices-demo) —— 包含已提交图谱的 Go / Java / Python / Node 多语言参考项目。
+
+**需要提交的内容：** `.understand-anything/` 下的全部文件，*除了* `intermediate/` 和 `diff-overlay.json`（这些是本地临时文件）。
+
+```gitignore
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+```
+
+**保持最新：** 启用 `/understand --auto-update` —— 一个 post-commit 钩子会增量更新图谱，每次提交都能得到匹配的图谱版本。也可以在发布前手动重跑 `/understand`。
+
+**大型图谱（10 MB 以上）：** 使用 **git-lfs** 跟踪。
+
+```bash
+git lfs install
+git lfs track ".understand-anything/*.json"
+git add .gitattributes .understand-anything/
+```
+
+---
+
 ## 🔧 技术原理
 
 ### 多智能体架构
