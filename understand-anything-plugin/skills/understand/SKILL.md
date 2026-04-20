@@ -50,7 +50,11 @@ Determine whether to run a full analysis or incremental update.
    done
 
    if [ -z "$PLUGIN_ROOT" ]; then
-     echo "Error: Cannot find the understand-anything plugin root. Make sure the plugin is installed and that ~/.understand-anything-plugin exists."
+     echo "Error: Cannot find the understand-anything plugin root."
+     echo "Checked:"
+     echo "  - $HOME/.understand-anything-plugin"
+     echo "  - ${SELF_RELATIVE:-<unresolved path derived from ~/.agents/skills/understand>}"
+     echo "Make sure the plugin is installed correctly."
      exit 1
    fi
 
