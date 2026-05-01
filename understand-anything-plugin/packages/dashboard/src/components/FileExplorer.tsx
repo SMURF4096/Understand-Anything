@@ -141,8 +141,16 @@ function FileTreeRow({
 export default function FileExplorer() {
   const graph = useDashboardStore((s) => s.graph);
   const openCodeViewer = useDashboardStore((s) => s.openCodeViewer);
+  const navigateToNode = useDashboardStore((s) => s.navigateToNode);
   const entries = useMemo(() => buildFileTree(graph?.nodes ?? []), [graph]);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  // Navigate the graph first (drills into layer + selects node, which clears the
+  // code viewer), then re-open the viewer so the source panel stays visible.
+  const handleOpenFile = (nodeId: string) => {
+    navigateToNode(nodeId);
+    openCodeViewer(nodeId);
+  };
 
   const toggleFolder = (folderPath: string) => {
     setExpanded((current) => {
@@ -194,7 +202,7 @@ export default function FileExplorer() {
               depth={0}
               expanded={expanded}
               toggleFolder={toggleFolder}
-              openFile={openCodeViewer}
+              openFile={handleOpenFile}
             />
           ))
         )}
