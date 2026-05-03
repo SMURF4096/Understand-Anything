@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -31,7 +31,10 @@ import {
   LAYER_CLUSTER_HEIGHT,
   PORTAL_NODE_WIDTH,
   PORTAL_NODE_HEIGHT,
+  nodesToElkInput,
+  mergeElkPositions,
 } from "../utils/layout";
+import { applyElkLayout } from "../utils/elk-layout";
 import {
   aggregateLayerEdges,
   computePortals,
@@ -127,11 +130,17 @@ function useOverviewGraph() {
   const searchResults = useDashboardStore((s) => s.searchResults);
   const drillIntoLayer = useDashboardStore((s) => s.drillIntoLayer);
 
-  return useMemo(() => {
-    if (!graph) return { nodes: [] as Node[], edges: [] as Edge[] };
-
+  // Build cluster nodes / flow edges / dims synchronously; only the layout
+  // call itself is async, so we memo the structural pieces and run ELK in an
+  // effect.
+  const built = useMemo(() => {
+    if (!graph) {
+      return null;
+    }
     const layers = graph.layers ?? [];
-    if (layers.length === 0) return { nodes: [] as Node[], edges: [] as Edge[] };
+    if (layers.length === 0) {
+      return null;
+    }
 
     // Build search match counts per layer
     const searchMatchByLayer = new Map<string, number>();
@@ -199,9 +208,43 @@ function useOverviewGraph() {
     for (const n of clusterNodes) {
       dims.set(n.id, { width: LAYER_CLUSTER_WIDTH, height: LAYER_CLUSTER_HEIGHT });
     }
-    const laid = applyDagreLayout(clusterNodes as unknown as Node[], flowEdges, "TB", dims);
-    return { nodes: laid.nodes, edges: laid.edges };
+
+    return { clusterNodes, flowEdges, dims };
   }, [graph, searchResults, drillIntoLayer]);
+
+  const [overview, setOverview] = useState<{ nodes: Node[]; edges: Edge[] }>({
+    nodes: [],
+    edges: [],
+  });
+
+  useEffect(() => {
+    if (!built) {
+      setOverview({ nodes: [], edges: [] });
+      return;
+    }
+    let cancelled = false;
+    const { clusterNodes, flowEdges, dims } = built;
+    const elkInput = nodesToElkInput(
+      clusterNodes as unknown as Node[],
+      flowEdges,
+      dims,
+    );
+    applyElkLayout(elkInput, { strict: import.meta.env.DEV }).then(
+      ({ positioned }) => {
+        if (cancelled) return;
+        const positionedNodes = mergeElkPositions(
+          clusterNodes as unknown as Node[],
+          positioned,
+        );
+        setOverview({ nodes: positionedNodes, edges: flowEdges });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [built]);
+
+  return overview;
 }
 
 // ── Layer detail level: topology (dagre) + visual overlay ───────────────

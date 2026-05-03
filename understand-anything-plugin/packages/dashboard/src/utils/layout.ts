@@ -10,6 +10,7 @@ import {
 } from "d3-force";
 import type { SimulationNodeDatum, SimulationLinkDatum } from "d3-force";
 import type { Node, Edge } from "@xyflow/react";
+import type { ElkInput } from "./elk-layout";
 
 export const NODE_WIDTH = 280;
 export const NODE_HEIGHT = 120;
@@ -182,4 +183,55 @@ export function applyForceLayout(
   return { nodes: layoutedNodes, edges };
 }
 
+// ---------------------------------------------------------------------------
+// ELK helpers
+// ---------------------------------------------------------------------------
 
+const ELK_DEFAULT_LAYOUT_OPTIONS: Record<string, string> = {
+  algorithm: "layered",
+  "elk.direction": "DOWN",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+  "elk.spacing.nodeNode": "60",
+  "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+  "elk.edgeRouting": "ORTHOGONAL",
+  "elk.layered.compaction.postCompaction.strategy": "LEFT",
+  "elk.padding": "[top=40,left=20,right=20,bottom=20]",
+};
+
+export function nodesToElkInput(
+  nodes: Node[],
+  edges: Edge[],
+  dims: Map<string, { width: number; height: number }>,
+): ElkInput {
+  return {
+    id: "root",
+    layoutOptions: ELK_DEFAULT_LAYOUT_OPTIONS,
+    children: nodes.map((n) => {
+      const d = dims.get(n.id);
+      return {
+        id: n.id,
+        width: d?.width ?? NODE_WIDTH,
+        height: d?.height ?? NODE_HEIGHT,
+      };
+    }),
+    edges: edges.map((e, i) => ({
+      id: e.id ?? `e${i}`,
+      sources: [String(e.source)],
+      targets: [String(e.target)],
+    })),
+  };
+}
+
+export function mergeElkPositions<T extends Node>(
+  nodes: T[],
+  positioned: ElkInput,
+): T[] {
+  const posMap = new Map<string, { x: number; y: number }>();
+  for (const c of positioned.children ?? []) {
+    posMap.set(c.id, { x: c.x ?? 0, y: c.y ?? 0 });
+  }
+  return nodes.map((n) => ({
+    ...n,
+    position: posMap.get(n.id) ?? n.position ?? { x: 0, y: 0 },
+  }));
+}
