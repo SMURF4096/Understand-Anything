@@ -1,10 +1,14 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 import type { GraphIssue } from "@understand-anything/core/schema";
+import { NODE_WIDTH, NODE_HEIGHT } from "./layout";
 
 export interface ElkChild {
   id: string;
   width?: number;
   height?: number;
+  /** Set by ELK after layout; absent on input. Downstream consumers must default. */
+  x?: number;
+  y?: number;
   children?: ElkChild[];
   parentId?: string;
 }
@@ -22,8 +26,11 @@ export interface ElkInput {
   layoutOptions?: Record<string, string>;
 }
 
-const DEFAULT_NODE_WIDTH = 280;
-const DEFAULT_NODE_HEIGHT = 120;
+// Keep ELK fallback dimensions in lockstep with the dagre/force NODE
+// dimensions in utils/layout.ts so layouts stay collision-consistent
+// during the migration.
+const DEFAULT_NODE_WIDTH = NODE_WIDTH;
+const DEFAULT_NODE_HEIGHT = NODE_HEIGHT;
 
 interface RepairOptions {
   strict?: boolean;
