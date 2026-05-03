@@ -1,4 +1,4 @@
-import type { KnowledgeGraph } from "@understand-anything/core/types";
+import type { GraphEdge, KnowledgeGraph } from "@understand-anything/core/types";
 
 export interface LayerEdgeAggregation {
   sourceLayerId: string;
@@ -132,4 +132,74 @@ export function findCrossLayerFileNodes(
     }
   }
   return result;
+}
+
+export interface AggregatedContainerEdge {
+  sourceContainerId: string;
+  targetContainerId: string;
+  count: number;
+  types: string[];
+}
+
+export interface ContainerEdgeBuckets {
+  intraContainer: GraphEdge[];
+  interContainerAggregated: AggregatedContainerEdge[];
+}
+
+/**
+ * Bucket edges into intra-container (preserved) and inter-container
+ * (aggregated by directed (source,target) container pair).
+ *
+ * Direction is significant: A→B and B→A produce two independent
+ * aggregated edges. Edges whose endpoints have no container mapping
+ * are dropped (treat them as pre-filtered).
+ */
+export function aggregateContainerEdges(
+  edges: GraphEdge[],
+  nodeToContainer: Map<string, string>,
+): ContainerEdgeBuckets {
+  const intra: GraphEdge[] = [];
+  const interMap = new Map<
+    string,
+    {
+      sourceContainerId: string;
+      targetContainerId: string;
+      count: number;
+      types: Set<string>;
+    }
+  >();
+
+  for (const e of edges) {
+    const sc = nodeToContainer.get(e.source);
+    const tc = nodeToContainer.get(e.target);
+    if (!sc || !tc) continue;
+    if (sc === tc) {
+      intra.push(e);
+      continue;
+    }
+    const key = `${sc} ${tc}`;
+    const existing = interMap.get(key);
+    if (existing) {
+      existing.count++;
+      existing.types.add(e.type);
+    } else {
+      interMap.set(key, {
+        sourceContainerId: sc,
+        targetContainerId: tc,
+        count: 1,
+        types: new Set([e.type]),
+      });
+    }
+  }
+
+  const interContainerAggregated: AggregatedContainerEdge[] = [...interMap.values()].map(
+    (v) => ({
+      sourceContainerId: v.sourceContainerId,
+      targetContainerId: v.targetContainerId,
+      count: v.count,
+      types: [...v.types],
+    }),
+  );
+
+  return { intraContainer: intra, interContainerAggregated };
 }
