@@ -1105,7 +1105,10 @@ function useLayerDetailGraph() {
 
   // Replace aggregated edges incident to an expanded container with the
   // underlying file→file edges from filteredEdges. Aggregated edges where
-  // neither endpoint is expanded pass through unchanged.
+  // neither endpoint is expanded pass through unchanged. Also surface
+  // intra-container edges for each expanded container — these are stored
+  // separately on topo.intraContainer (Stage 1 doesn't render them since
+  // the children aren't visible there).
   const expandedEdges = useMemo<Edge[]>(() => {
     if (expandedContainers.size === 0) return topo.edges;
 
@@ -1140,8 +1143,28 @@ function useLayerDetailGraph() {
         });
       });
     }
+    // Add intra-container edges for each expanded container so the user
+    // can see the wiring between sibling files inside an expanded folder.
+    topo.intraContainer.forEach((e, idx) => {
+      const cid = topo.nodeToContainer.get(e.source);
+      if (!cid || !expandedContainers.has(cid)) return;
+      out.push({
+        id: `intra-${e.source}-${e.target}-${e.type}-${idx}`,
+        source: e.source,
+        target: e.target,
+        label: e.type,
+        style: { stroke: "rgba(212,165,116,0.5)", strokeWidth: 1.5 },
+        labelStyle: { fill: "#a39787", fontSize: 10 },
+      });
+    });
     return out;
-  }, [topo.edges, topo.filteredEdges, topo.nodeToContainer, expandedContainers]);
+  }, [
+    topo.edges,
+    topo.filteredEdges,
+    topo.intraContainer,
+    topo.nodeToContainer,
+    expandedContainers,
+  ]);
 
   const edges = useMemo(() => {
     // Compose: Stage 1 / inflated edges, plus portal edges (Stage 1 sources
