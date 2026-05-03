@@ -6,6 +6,8 @@ const ce = (source: string, target: string, type: EdgeType = "calls"): GraphEdge
   source,
   target,
   type,
+  direction: "forward",
+  weight: 1,
 });
 
 describe("aggregateContainerEdges", () => {
