@@ -46,11 +46,16 @@ function defaultFilters(overrides: Partial<FilterState> = {}): FilterState {
   };
 }
 
-function indexLayers(layers: Layer[]): Map<string, string> {
-  const m = new Map<string, string>();
+function indexLayers(layers: Layer[]): Map<string, Set<string>> {
+  const m = new Map<string, Set<string>>();
   for (const l of layers) {
     for (const nid of l.nodeIds) {
-      if (!m.has(nid)) m.set(nid, l.id);
+      let set = m.get(nid);
+      if (!set) {
+        set = new Set<string>();
+        m.set(nid, set);
+      }
+      set.add(l.id);
     }
   }
   return m;
@@ -100,6 +105,22 @@ describe("filterNodes", () => {
     const filters = defaultFilters({ layerIds: new Set(["L1"]) });
     const out = filterNodes(nodes, idx, filters);
     expect(out.map((n) => n.id)).toEqual(["a"]);
+  });
+
+  it("keeps a multi-layer node when any of its layers is selected (any-layer-wins)", () => {
+    // Regression for the silent first-wins behavior change in #112: a node
+    // X listed in both L1 (declared first) and L2, with only L2 selected,
+    // must still pass — matching the prior `layers.some(...)` shape. The
+    // first-wins `nodeIdToLayerId` index that drives navigation would
+    // have dropped X here.
+    const nodes = [node("x"), node("y")];
+    const idx = indexLayers([
+      { id: "L1", name: "L1", description: "", nodeIds: ["x"] },
+      { id: "L2", name: "L2", description: "", nodeIds: ["x", "y"] },
+    ]);
+    const filters = defaultFilters({ layerIds: new Set(["L2"]) });
+    const out = filterNodes(nodes, idx, filters);
+    expect(out.map((n) => n.id).sort()).toEqual(["x", "y"]);
   });
 
   it("ignores layer filter when no layers are selected (parity with prior shape)", () => {

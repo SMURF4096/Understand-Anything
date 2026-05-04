@@ -55,24 +55,42 @@ export type NodeCategory = "code" | "config" | "docs" | "infra" | "data" | "doma
  * the dashboard reads via store selectors. Centralised so `setGraph` and
  * any future graph-replacement path stay in sync.
  *
- * `nodeIdToLayerId` preserves the prior `findNodeLayer` "first matching
- * layer wins" semantics — if a node id appears in multiple layers (rare
- * but legal in the schema), the first occurrence in `graph.layers` order
- * is the one we map to.
+ * Two layer indexes, intentionally distinct:
+ *
+ * - `nodeIdToLayerId` preserves the prior `findNodeLayer` "first matching
+ *   layer wins" semantics — if a node id appears in multiple layers
+ *   (rare but legal in the schema), the first occurrence in `graph.layers`
+ *   order is the one we map to. Drives navigation (drillIntoLayer, tour
+ *   step → layer, sidebar history) where a single canonical layer is the
+ *   right answer.
+ *
+ * - `nodeIdToLayerIds` records *every* layer a node belongs to. Drives
+ *   membership queries (filterNodes) where the prior `Layer[] +
+ *   layer.nodeIds.includes` shape was any-layer-wins — a node in L1 and
+ *   L2 with only L2 selected must still pass. Collapsing to first-wins
+ *   for filtering would be a silent regression.
  */
 function buildGraphIndexes(graph: KnowledgeGraph): {
   nodesById: Map<string, GraphNode>;
   nodeIdToLayerId: Map<string, string>;
+  nodeIdToLayerIds: Map<string, Set<string>>;
 } {
   const nodesById = new Map<string, GraphNode>();
   for (const node of graph.nodes) nodesById.set(node.id, node);
   const nodeIdToLayerId = new Map<string, string>();
+  const nodeIdToLayerIds = new Map<string, Set<string>>();
   for (const layer of graph.layers) {
     for (const nid of layer.nodeIds) {
       if (!nodeIdToLayerId.has(nid)) nodeIdToLayerId.set(nid, layer.id);
+      let set = nodeIdToLayerIds.get(nid);
+      if (!set) {
+        set = new Set<string>();
+        nodeIdToLayerIds.set(nid, set);
+      }
+      set.add(layer.id);
     }
   }
-  return { nodesById, nodeIdToLayerId };
+  return { nodesById, nodeIdToLayerId, nodeIdToLayerIds };
 }
 
 /** Maximum number of entries in the sidebar navigation history. */
@@ -82,8 +100,10 @@ interface DashboardStore {
   graph: KnowledgeGraph | null;
   /** id → node lookup, rebuilt by setGraph. Empty before any graph loads. */
   nodesById: Map<string, GraphNode>;
-  /** id → layer id, rebuilt by setGraph. Empty before any graph loads. */
+  /** id → layer id (first-matching-layer wins), rebuilt by setGraph. Empty before any graph loads. */
   nodeIdToLayerId: Map<string, string>;
+  /** id → set of every layer the node belongs to, rebuilt by setGraph. Empty before any graph loads. */
+  nodeIdToLayerIds: Map<string, Set<string>>;
   selectedNodeId: string | null;
   searchQuery: string;
   searchResults: SearchResult[];
@@ -229,6 +249,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
   graph: null,
   nodesById: new Map<string, GraphNode>(),
   nodeIdToLayerId: new Map<string, string>(),
+  nodeIdToLayerIds: new Map<string, Set<string>>(),
   selectedNodeId: null,
   searchQuery: "",
   searchResults: [],
@@ -283,11 +304,12 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
     const { viewMode, domainGraph, activeDomainId } = get();
     // Preserve domain view if a domain graph is already loaded
     const keepDomainView = viewMode === "domain" && domainGraph !== null;
-    const { nodesById, nodeIdToLayerId } = buildGraphIndexes(graph);
+    const { nodesById, nodeIdToLayerId, nodeIdToLayerIds } = buildGraphIndexes(graph);
     set({
       graph,
       nodesById,
       nodeIdToLayerId,
+      nodeIdToLayerIds,
       searchEngine,
       searchResults,
       navigationLevel: "overview",

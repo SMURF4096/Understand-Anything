@@ -20,7 +20,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function ExportMenu() {
   const graph = useDashboardStore((s) => s.graph);
-  const nodeIdToLayerId = useDashboardStore((s) => s.nodeIdToLayerId);
+  const nodeIdToLayerIds = useDashboardStore((s) => s.nodeIdToLayerIds);
   const filters = useDashboardStore((s) => s.filters);
   const exportMenuOpen = useDashboardStore((s) => s.exportMenuOpen);
   const toggleExportMenu = useDashboardStore((s) => s.toggleExportMenu);
@@ -188,7 +188,7 @@ export default function ExportMenu() {
         ? graph.nodes.filter((n) => !subFileTypes.has(n.type))
         : graph.nodes;
 
-      filteredGraphNodes = filterNodes(filteredGraphNodes, nodeIdToLayerId, filters);
+      filteredGraphNodes = filterNodes(filteredGraphNodes, nodeIdToLayerIds, filters);
       const filteredNodeIds = new Set(filteredGraphNodes.map((n) => n.id));
 
       let filteredGraphEdges = graph.edges.filter(
