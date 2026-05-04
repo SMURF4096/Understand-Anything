@@ -271,6 +271,10 @@ function layerResetIfChanged(
     containerLayoutCache: new Map(),
     containerSizeMemory: new Map(),
     expandedContainers: new Set(),
+    // Drop any pending focus too — its id was scoped to the previous
+    // layer and would otherwise re-collide with a same-id container in
+    // the new layer for the duration of the 1.2s timer.
+    pendingFocusContainer: null,
   };
 }
 
@@ -324,6 +328,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       containerLayoutCache: new Map(),
       containerSizeMemory: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
     })),
 
   setGraph: (graph) => {
@@ -350,6 +355,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       activeDomainId: keepDomainView ? activeDomainId : null,
       containerLayoutCache: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
       containerSizeMemory: new Map(),
       stage1Tick: 0,
       layoutIssues: [],
@@ -449,6 +455,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       containerLayoutCache: new Map(),
       containerSizeMemory: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
     }),
 
   navigateToOverview: () =>
@@ -463,6 +470,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       containerLayoutCache: new Map(),
       containerSizeMemory: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
     }),
 
   setFocusNode: (nodeId) =>
@@ -475,6 +483,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       containerLayoutCache: new Map(),
       containerSizeMemory: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
     }),
   setSearchMode: (mode) => set({ searchMode: mode }),
   setSearchQuery: (query) => {
@@ -498,6 +507,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       containerLayoutCache: new Map(),
       containerSizeMemory: new Map(),
       expandedContainers: new Set(),
+      pendingFocusContainer: null,
     }),
 
   openCodeViewer: (nodeId) =>
@@ -718,7 +728,7 @@ export const useDashboardStore = create<DashboardStore>()((set, get) => ({
       return { containerLayoutCache: next, containerSizeMemory: sizeNext };
     }),
   clearContainerLayouts: () =>
-    set({ containerLayoutCache: new Map(), expandedContainers: new Set() }),
+    set({ containerLayoutCache: new Map(), expandedContainers: new Set(), pendingFocusContainer: null }),
 
   containerSizeMemory: new Map(),
 
