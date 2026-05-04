@@ -123,7 +123,11 @@ function TourFitView() {
     let frame = 0;
     let cancelled = false;
     let rafId = 0;
-    setTourFitPending(true);
+    // After we've already shown the fallback for this step, suppress the
+    // "Locating tour highlight…" overlay on subsequent re-fires (each
+    // `nodes` change re-enters the effect, but the user has already given
+    // up waiting). The retry still runs silently in case Stage 2 lands.
+    if (fallbackKeyRef.current !== targetKey) setTourFitPending(true);
 
     const tick = () => {
       if (cancelled) return;
