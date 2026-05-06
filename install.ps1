@@ -97,8 +97,34 @@ function Get-SkillNames {
     Get-ChildItem -Path $root -Directory | Select-Object -ExpandProperty Name
 }
 
+function Test-IsReparse([string]$Path) {
+    if (-not (Test-Path $Path)) { return $false }
+    $item = Get-Item -LiteralPath $Path -Force
+    return ($item.LinkType -eq 'Junction' -or $item.LinkType -eq 'SymbolicLink')
+}
+
+function Remove-Reparse([string]$Path) {
+    # Removes a junction/symlink without touching its target. Refuses to touch
+    # real files or directories so an existing user folder at the same path is
+    # never destroyed.
+    if (-not (Test-Path $Path)) { return $false }
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item.LinkType -eq 'Junction' -or $item.LinkType -eq 'SymbolicLink') {
+        $item.Delete()
+        return $true
+    }
+    Write-Warning "Refusing to delete $Path — it is a real file/directory, not a junction/symlink we created. Remove it manually if you intended to."
+    return $false
+}
+
 function New-Junction([string]$LinkPath, [string]$TargetPath) {
-    if (Test-Path $LinkPath) { Remove-Item -Force -Recurse $LinkPath }
+    if (Test-Path $LinkPath) {
+        if (Test-IsReparse $LinkPath) {
+            (Get-Item -LiteralPath $LinkPath -Force).Delete()
+        } else {
+            Write-Error "Refusing to overwrite $LinkPath — it is a real file/directory, not a junction. Move or remove it first."
+        }
+    }
     New-Item -ItemType Junction -Path $LinkPath -Target $TargetPath | Out-Null
 }
 
@@ -125,16 +151,28 @@ function Link-Skills([string]$Target, [string]$Style) {
 }
 
 function Unlink-Skills([string]$Target, [string]$Style) {
+    if (-not (Test-Path $Target)) { return }
     switch ($Style) {
         'per-skill' {
-            foreach ($skill in Get-SkillNames) {
-                $link = Join-Path $Target $skill
-                if (Test-Path $link) { Remove-Item -Force -Recurse $link }
+            $skillsRoot = Get-SkillsRoot
+            if (Test-Path $skillsRoot) {
+                foreach ($skill in Get-SkillNames) {
+                    Remove-Reparse (Join-Path $Target $skill) | Out-Null
+                }
+            } else {
+                # Checkout is gone — scan the target dir for stale links pointing
+                # into our plugin tree so we can still clean up.
+                Get-ChildItem -LiteralPath $Target -Force | ForEach-Object {
+                    if ($_.LinkType -eq 'Junction' -or $_.LinkType -eq 'SymbolicLink') {
+                        if ($_.Target -match 'understand-anything-plugin[\\/]+skills[\\/]+') {
+                            Remove-Reparse $_.FullName | Out-Null
+                        }
+                    }
+                }
             }
         }
         'folder' {
-            $link = Join-Path $Target 'understand-anything'
-            if (Test-Path $link) { Remove-Item -Force -Recurse $link }
+            Remove-Reparse (Join-Path $Target 'understand-anything') | Out-Null
         }
     }
 }
@@ -167,18 +205,15 @@ function Cmd-Install([string]$Id) {
 
 function Cmd-Uninstall([string]$Id) {
     $cfg = Resolve-Platform $Id
-    if (-not (Test-Path $RepoDir)) {
-        Write-Host "No checkout found at $RepoDir — nothing to unlink."
-        return
-    }
     Write-Host "→ Removing skill links for $Id"
     Unlink-Skills $cfg.Target $cfg.Style
-    if (Test-Path $PluginLink) {
-        Remove-Item -Force -Recurse $PluginLink
+    if (Remove-Reparse $PluginLink) {
         Write-Host "  ✓ removed $PluginLink"
     }
-    Write-Host "`nThe checkout at $RepoDir was kept (other platforms may still use it)."
-    Write-Host "To remove it: Remove-Item -Recurse -Force '$RepoDir'"
+    if (Test-Path $RepoDir) {
+        Write-Host "`nThe checkout at $RepoDir was kept (other platforms may still use it)."
+        Write-Host "To remove it: Remove-Item -Recurse -Force '$RepoDir'"
+    }
 }
 
 function Cmd-Update {

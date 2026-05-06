@@ -136,15 +136,28 @@ link_skills() {
 
 unlink_skills() {
   local target="$1" style="$2"
+  [[ -d "$target" ]] || return 0
   case "$style" in
     per-skill)
-      local skill
-      while IFS= read -r skill; do
-        rm -f "$target/$skill"
-      done < <(list_skills)
+      if [[ -d "$(skills_root)" ]]; then
+        local skill
+        while IFS= read -r skill; do
+          [[ -L "$target/$skill" ]] && rm -f "$target/$skill"
+        done < <(list_skills)
+      else
+        # Checkout is gone — scan the target dir for stale links pointing into
+        # our plugin tree so we can still clean up.
+        local link resolved
+        for link in "$target"/*; do
+          [[ -L "$link" ]] || continue
+          resolved="$(readlink "$link" 2>/dev/null || true)"
+          [[ "$resolved" == *"/understand-anything-plugin/skills/"* ]] || continue
+          rm -f "$link"
+        done
+      fi
       ;;
     folder)
-      rm -f "$target/understand-anything"
+      [[ -L "$target/understand-anything" ]] && rm -f "$target/understand-anything"
       ;;
   esac
 }
@@ -186,18 +199,16 @@ cmd_uninstall() {
   target="$(printf '%s\n' "$row" | cut -d'|' -f2)"
   style="$(printf '%s\n' "$row" | cut -d'|' -f3)"
 
-  if [[ ! -d "$REPO_DIR" ]]; then
-    printf 'No checkout found at %s — nothing to unlink.\n' "$REPO_DIR"
-    exit 0
-  fi
   printf -- '→ Removing skill links for %s\n' "$id"
   unlink_skills "$target" "$style"
   if [[ -L "$PLUGIN_LINK" ]]; then
     rm -f "$PLUGIN_LINK"
     printf '  ✓ removed %s\n' "$PLUGIN_LINK"
   fi
-  printf '\nThe checkout at %s was kept (other platforms may still use it).\n' "$REPO_DIR"
-  printf 'To remove it: rm -rf "%s"\n' "$REPO_DIR"
+  if [[ -d "$REPO_DIR" ]]; then
+    printf '\nThe checkout at %s was kept (other platforms may still use it).\n' "$REPO_DIR"
+    printf 'To remove it: rm -rf "%s"\n' "$REPO_DIR"
+  fi
 }
 
 cmd_update() {
