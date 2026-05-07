@@ -41,7 +41,24 @@ export class MarkdownParser implements AnalyzerPlugin {
   private extractSections(content: string): SectionInfo[] {
     const sections: SectionInfo[] = [];
     const lines = content.split("\n");
+    let inFence = false;
+    let fenceMarker: string | null = null;
     for (let i = 0; i < lines.length; i++) {
+      // Toggle fenced-code-block state. Headings inside ``` or ~~~ blocks are
+      // shell-style comments, not document headings, and must be ignored.
+      const fenceMatch = lines[i].match(/^(```+|~~~+)/);
+      if (fenceMatch) {
+        if (!inFence) {
+          inFence = true;
+          fenceMarker = fenceMatch[1][0];
+        } else if (fenceMarker && lines[i].startsWith(fenceMarker)) {
+          inFence = false;
+          fenceMarker = null;
+        }
+        continue;
+      }
+      if (inFence) continue;
+
       const match = lines[i].match(/^(#{1,6})\s+(.+)/);
       if (match) {
         sections.push({

@@ -83,9 +83,11 @@ async function main() {
       continue;
     }
 
-    // Line counts
+    // Line counts. POSIX text files end in a trailing newline, which makes
+    // `split('\n')` produce one extra empty element. Match `wc -l` semantics
+    // (used by the project scanner for `sizeLines`) so the two counts agree.
     const lines = content.split('\n');
-    const totalLines = lines.length;
+    const totalLines = content.endsWith('\n') ? Math.max(0, lines.length - 1) : lines.length;
     const nonEmptyLines = lines.filter(l => l.trim().length > 0).length;
 
     // Structural analysis via registry
@@ -148,8 +150,6 @@ export function buildResult(file, totalLines, nonEmptyLines, analysis, callGraph
     return base;
   }
 
-  const isCode = file.fileCategory === 'code' || file.fileCategory === 'script' || file.fileCategory === 'markup';
-
   // Functions (code files)
   if (analysis.functions && analysis.functions.length > 0) {
     base.functions = analysis.functions.map(fn => ({
@@ -176,7 +176,7 @@ export function buildResult(file, totalLines, nonEmptyLines, analysis, callGraph
     base.exports = analysis.exports.map(exp => ({
       name: exp.name,
       line: exp.lineNumber,
-      isDefault: false,
+      isDefault: exp.isDefault === true,
     }));
   }
 
@@ -246,11 +246,20 @@ export function buildResult(file, totalLines, nonEmptyLines, analysis, callGraph
   // Empty arrays are truthy, so explicitly check length so we fall back to the
   // parser's own import list when the scanner could not resolve any imports
   // (e.g. Python absolute imports the scanner doesn't follow).
+  //
+  // The fallback counts only relative-style imports (those starting with `.`)
+  // so the metric stays *internal-import* in semantics rather than mixing in
+  // every external package import seen by the parser. Resolved external imports
+  // can never produce edges anyway, so counting them would be misleading.
   const importPaths = batchImportData?.[file.path];
   if (importPaths && importPaths.length > 0) {
     metrics.importCount = importPaths.length;
   } else if (analysis.imports) {
-    metrics.importCount = analysis.imports.length;
+    const internal = analysis.imports.filter(imp => {
+      const src = imp?.source ?? '';
+      return src.startsWith('.');
+    });
+    metrics.importCount = internal.length;
   }
 
   if (analysis.exports) {

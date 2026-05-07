@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { MarkdownParser } from "../plugins/parsers/markdown-parser.js";
 import { YAMLConfigParser } from "../plugins/parsers/yaml-parser.js";
-import { JSONConfigParser } from "../plugins/parsers/json-parser.js";
+import { JSONConfigParser, stripJsoncSyntax } from "../plugins/parsers/json-parser.js";
 import { TOMLParser } from "../plugins/parsers/toml-parser.js";
 import { EnvParser } from "../plugins/parsers/env-parser.js";
 import { DockerfileParser } from "../plugins/parsers/dockerfile-parser.js";
@@ -51,6 +51,38 @@ describe("MarkdownParser", () => {
     const result = parser.analyzeFile("empty.md", "");
     expect(result.sections).toHaveLength(0);
   });
+
+  it("ignores headings inside fenced code blocks", () => {
+    // Regression: lines inside ``` blocks that look like shell comments
+    // (`# install`, `# build`) used to register as level-1 sections.
+    const content = [
+      "# Real Title",
+      "",
+      "Some intro.",
+      "",
+      "```bash",
+      "# install",
+      "npm install",
+      "# build",
+      "npm run build",
+      "```",
+      "",
+      "## Real Section",
+    ].join("\n");
+    const result = parser.analyzeFile("README.md", content);
+    expect(result.sections!.map((s) => s.name)).toEqual(["Real Title", "Real Section"]);
+  });
+
+  it("re-enters heading detection after the fence closes", () => {
+    const content = [
+      "```",
+      "# fake",
+      "```",
+      "# After fence",
+    ].join("\n");
+    const result = parser.analyzeFile("doc.md", content);
+    expect(result.sections!.map((s) => s.name)).toEqual(["After fence"]);
+  });
 });
 
 describe("YAMLConfigParser", () => {
@@ -69,6 +101,27 @@ describe("YAMLConfigParser", () => {
     const content = "invalid: yaml: content: [[[";
     const result = parser.analyzeFile("broken.yaml", content);
     expect(result.sections).toBeDefined();
+  });
+
+  it("declares yaml-flavored special formats so the registry can route them here", () => {
+    // Regression: docker-compose / kubernetes / github-actions / openapi
+    // were tagged with non-`yaml` ids by LanguageRegistry, so the parser
+    // never matched and the file got zero structural extraction.
+    expect(parser.languages).toEqual(expect.arrayContaining([
+      "yaml", "kubernetes", "docker-compose", "github-actions", "openapi",
+    ]));
+  });
+
+  it("recognizes quoted top-level keys (e.g. GitHub Actions `\"on\"`)", () => {
+    const content = '"on":\n  push:\n    branches: [main]\nname: ci\n';
+    const result = parser.analyzeFile(".github/workflows/ci.yml", content);
+    expect(result.sections!.map((s) => s.name)).toEqual(expect.arrayContaining(["on", "name"]));
+  });
+
+  it("emits one section per entry for array-root YAML documents", () => {
+    const content = "- name: alpha\n  port: 80\n- name: beta\n  port: 443\n";
+    const result = parser.analyzeFile("list.yaml", content);
+    expect(result.sections!.map((s) => s.name)).toEqual(["alpha", "beta"]);
   });
 });
 
@@ -100,6 +153,60 @@ describe("JSONConfigParser", () => {
     const content = "not json at all";
     const result = parser.analyzeFile("broken.json", content);
     expect(result.sections).toHaveLength(0);
+  });
+
+  it("declares json plus the JSON-flavored special formats as supported languages", () => {
+    expect(parser.languages).toEqual(["json", "jsonc", "json-schema", "openapi"]);
+  });
+
+  it("parses .jsonc files with line and block comments", () => {
+    const content = [
+      "{",
+      "  // top-level comment",
+      '  "name": "wrangler",',
+      "  /* block",
+      "     comment */",
+      '  "main": "src/index.ts",',
+      '  "compatibility_date": "2024-01-01",',
+      "}", // trailing comma above
+    ].join("\n");
+    const result = parser.analyzeFile("wrangler.jsonc", content);
+    const names = result.sections!.map((s) => s.name);
+    expect(names).toEqual(["name", "main", "compatibility_date"]);
+  });
+
+  it("preserves comment-like sequences inside string values", () => {
+    const content = '{\n  "url": "https://example.com//path",\n  "note": "/* not a comment */"\n}';
+    const result = parser.analyzeFile("config.jsonc", content);
+    expect(result.sections!.map((s) => s.name)).toEqual(["url", "note"]);
+  });
+});
+
+describe("stripJsoncSyntax", () => {
+  it("strips line comments", () => {
+    expect(stripJsoncSyntax('{"a": 1} // tail')).toBe('{"a": 1} ');
+  });
+
+  it("strips block comments", () => {
+    expect(stripJsoncSyntax('{/* x */ "a": 1}')).toBe('{ "a": 1}');
+  });
+
+  it("strips trailing commas before } and ]", () => {
+    expect(stripJsoncSyntax('{"a": 1,}')).toBe('{"a": 1}');
+    expect(stripJsoncSyntax('[1, 2,]')).toBe('[1, 2]');
+  });
+
+  it("does not strip // inside strings", () => {
+    expect(stripJsoncSyntax('{"u": "http://x"}')).toBe('{"u": "http://x"}');
+  });
+
+  it("handles escaped quotes inside strings", () => {
+    expect(stripJsoncSyntax('{"q": "say \\"hi\\""}')).toBe('{"q": "say \\"hi\\""}');
+  });
+
+  it("leaves plain JSON unchanged", () => {
+    const plain = '{"a": 1, "b": [2, 3]}';
+    expect(stripJsoncSyntax(plain)).toBe(plain);
   });
 });
 
@@ -424,6 +531,25 @@ describe("ShellParser edge cases", () => {
     expect(result.functions).toHaveLength(1);
     expect(result.functions[0].name).toBe("greet");
     expect(result.functions[0].lineRange[1]).toBeGreaterThan(result.functions[0].lineRange[0]);
+  });
+
+  it("rejects function-like patterns that lack an opening brace", () => {
+    // Regression: pre-2.6.2 the regex matched `name() echo hi` (POSIX
+    // one-liner) and `usage()` strings appearing in heredocs as if they
+    // were function definitions.
+    const content = [
+      "name() echo hi",
+      "say_usage() # comment, no brace",
+      "real_func() {",
+      "  echo real",
+      "}",
+    ].join("\n");
+    const result = parser.analyzeFile("script.sh", content);
+    expect(result.functions.map((f) => f.name)).toEqual(["real_func"]);
+  });
+
+  it("declares jenkinsfile so Groovy-flavored CI configs are routed here", () => {
+    expect(parser.languages).toEqual(expect.arrayContaining(["shell", "jenkinsfile"]));
   });
 });
 

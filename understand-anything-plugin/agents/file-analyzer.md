@@ -97,7 +97,27 @@ Read `$PROJECT_ROOT/.understand-anything/tmp/ua-file-extract-results-<batchIndex
 }
 ```
 
-**Supported file categories:** The bundled script handles all file categories — `code` (10 languages with tree-sitter: TypeScript, JavaScript, Python, Go, Rust, Java, Ruby, PHP, C/C++, C#), `config`, `docs`, `infra`, `data`, `script`, and `markup`. For languages without tree-sitter support (Swift, Kotlin), the script outputs basic metrics with empty structural data — use your judgment to supplement from source file reading if needed.
+**Non-code structural fields.** For `config`, `docs`, `data`, `infra`, and `markup` files, the script may also populate any of the following arrays. Treat each entry as a potential sub-file node and emit a corresponding `<prefix>:<path>:<name>` node in your output if it meets the significance filter:
+
+| Field | Source files | Sub-node prefix to emit | Notes |
+|---|---|---|---|
+| `sections` | Markdown, YAML, JSON, TOML | none — use for context only | Headings / top-level keys; usually NOT emitted as nodes |
+| `definitions` | `.env`, GraphQL, Protobuf | `schema:` for proto/graphql; skip for env | `kind` field tells you what each definition is |
+| `services` | Dockerfile, docker-compose | `service:<path>:<name>` | One node per stage / compose service |
+| `endpoints` | OpenAPI, Swagger, route files | `endpoint:<path>:<METHOD-path>` | Use HTTP method + path as the `name` |
+| `steps` | CI/CD configs (.github/workflows, .gitlab-ci) | `step:<path>:<name>` | One node per job/step |
+| `resources` | Terraform, CloudFormation, K8s | `resource:<path>:<name>` | `kind` carries the resource type |
+
+When any of these arrays is present and non-empty, you MUST iterate it and emit nodes for the significant entries (don't just create the parent file node and call it done). The corresponding `metrics.serviceCount` / `metrics.endpointCount` / `metrics.resourceCount` / `metrics.stepCount` / `metrics.definitionCount` fields tell you how many were extracted at a glance.
+
+**Supported file categories:** The bundled script handles all file categories — `code` (10 languages with tree-sitter: TypeScript, JavaScript, Python, Go, Rust, Java, Ruby, PHP, C/C++, C#), `config`, `docs`, `infra`, `data`, `script`, and `markup`. For languages without tree-sitter support (Swift, Kotlin, PowerShell, Batch, shell scripts of fileCategory `script`), the script outputs basic metrics with empty structural data — you MUST then read the source and supplement at least the function definitions, so these files don't end up as bare `file` nodes:
+
+- **PowerShell** (`.ps1`): match top-level `function NAME { ... }` blocks (case-insensitive); name = `NAME`, params from the param block when present
+- **Bash / shell** (`.sh`, `.bash`): match top-level `NAME() { ... }` and `function NAME { ... }`
+- **Batch** (`.bat`, `.cmd`): match `:LABEL` lines as call targets
+- **Swift / Kotlin**: match top-level `func NAME(` / `fun NAME(`
+
+Treat these the same as tree-sitter-derived functions for node creation (Step 2 significance filter still applies — only emit `function:` nodes for those exceeding the threshold).
 
 ---
 

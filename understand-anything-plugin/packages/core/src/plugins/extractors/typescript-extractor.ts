@@ -396,12 +396,22 @@ export class TypeScriptExtractor implements LanguageExtractor {
           const nameNode =
             child.childForFieldName("name") ??
             child.children.find((c) => c.type === "identifier");
+          const isDefault = node.children.some((c) => c.type === "default");
           if (nameNode && !exportedNames.has(nameNode.text)) {
             exports.push({
               name: nameNode.text,
               lineNumber: node.startPosition.row + 1,
+              isDefault,
             });
             exportedNames.add(nameNode.text);
+          } else if (!nameNode && isDefault && !exportedNames.has("default")) {
+            // `export default function () {}` — anonymous default export
+            exports.push({
+              name: "default",
+              lineNumber: node.startPosition.row + 1,
+              isDefault: true,
+            });
+            exportedNames.add("default");
           }
           break;
         }
@@ -413,16 +423,17 @@ export class TypeScriptExtractor implements LanguageExtractor {
               c.type === "type_identifier" ||
               c.type === "identifier",
           );
+          const isDefault = node.children.some(
+            (c) => c.type === "default",
+          );
           if (nameNode && !exportedNames.has(nameNode.text)) {
-            const isDefault = node.children.some(
-              (c) => c.type === "default",
-            );
             const exportName = isDefault
               ? "default"
               : nameNode.text;
             exports.push({
               name: exportName,
               lineNumber: node.startPosition.row + 1,
+              isDefault,
             });
             exportedNames.add(exportName);
           }

@@ -7,7 +7,9 @@ import type { AnalyzerPlugin, StructuralAnalysis, ReferenceResolution } from "..
  */
 export class ShellParser implements AnalyzerPlugin {
   name = "shell-parser";
-  languages = ["shell"];
+  // `jenkinsfile` is Groovy-flavored DSL; the function-style syntax is similar
+  // enough that this parser at least picks up step blocks.
+  languages = ["shell", "jenkinsfile"];
 
   analyzeFile(_filePath: string, content: string): StructuralAnalysis {
     const functions = this.extractFunctions(content);
@@ -42,33 +44,41 @@ export class ShellParser implements AnalyzerPlugin {
     const lines = content.split("\n");
 
     for (let i = 0; i < lines.length; i++) {
-      // Match function name() { or function name {
+      // Match function name() { or function name { — but require an opening
+      // brace either on this line or the next non-blank line. Without that
+      // guard, lines like `command_substitution_demo() echo hi` or stray
+      // `name()` patterns inside heredocs / comments would be picked up.
       const match = lines[i].match(/^(?:function\s+)?(\w+)\s*\(\s*\)\s*\{?/) ||
                     lines[i].match(/^function\s+(\w+)\s*\{?/);
-      if (match) {
-        const name = match[1];
-        // Find closing brace (handle brace on same line or next line)
-        let endLine = i;
-        if (lines[i].includes("{") || (i + 1 < lines.length && lines[i + 1]?.trim() === "{")) {
-          const startBraceLine = lines[i].includes("{") ? i : i + 1;
-          let depth = 0;
-          for (let j = startBraceLine; j < lines.length; j++) {
-            for (const ch of lines[j]) {
-              if (ch === "{") depth++;
-              if (ch === "}") depth--;
-            }
-            if (depth === 0) {
-              endLine = j;
-              break;
-            }
-          }
-        }
-        functions.push({
-          name,
-          lineRange: [i + 1, endLine + 1],
-          params: [],
-        });
+      if (!match) continue;
+      const name = match[1];
+      const hasBraceHere = lines[i].includes("{");
+      let nextNonBlank = i + 1;
+      while (nextNonBlank < lines.length && lines[nextNonBlank].trim() === "") {
+        nextNonBlank++;
       }
+      const hasBraceNext = nextNonBlank < lines.length && lines[nextNonBlank].trim().startsWith("{");
+      if (!hasBraceHere && !hasBraceNext) continue;
+
+      // Find closing brace
+      const startBraceLine = hasBraceHere ? i : nextNonBlank;
+      let depth = 0;
+      let endLine = startBraceLine;
+      for (let j = startBraceLine; j < lines.length; j++) {
+        for (const ch of lines[j]) {
+          if (ch === "{") depth++;
+          if (ch === "}") depth--;
+        }
+        if (depth === 0) {
+          endLine = j;
+          break;
+        }
+      }
+      functions.push({
+        name,
+        lineRange: [i + 1, endLine + 1],
+        params: [],
+      });
     }
 
     return functions;

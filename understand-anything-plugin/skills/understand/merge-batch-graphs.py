@@ -33,6 +33,8 @@ VALID_NODE_PREFIXES = {
     "config", "document", "service", "table", "endpoint",
     "pipeline", "schema", "resource",
     "domain", "flow", "step",
+    # Knowledge-base node types (schema.ts NodeType enum)
+    "article", "entity", "topic", "claim", "source",
 }
 
 # node.type → canonical ID prefix
@@ -54,6 +56,12 @@ TYPE_TO_PREFIX: dict[str, str] = {
     "domain": "domain",
     "flow": "flow",
     "step": "step",
+    # Knowledge-base node types
+    "article": "article",
+    "entity": "entity",
+    "topic": "topic",
+    "claim": "claim",
+    "source": "source",
 }
 
 COMPLEXITY_MAP: dict[str, str] = {
@@ -155,7 +163,14 @@ def normalize_node_id(node_id: str, node: dict[str, Any]) -> str:
         if node_type in ("function", "class"):
             file_path = node.get("filePath", "")
             name = node.get("name", nid)
-            nid = f"{prefix}:{file_path}:{name}" if file_path else f"{prefix}:{nid}"
+            if file_path:
+                nid = f"{prefix}:{file_path}:{name}"
+            else:
+                # Without filePath, function:<name> collides with every other
+                # function of the same name across the project. Prefix with a
+                # placeholder so the collision is at least detectable in the
+                # report instead of silently merging unrelated nodes.
+                nid = f"{prefix}:__nofilepath__:{name}"
         else:
             nid = f"{prefix}:{nid}"
 
@@ -275,11 +290,15 @@ def merge_and_normalize(batches: list[dict[str, Any]]) -> tuple[dict[str, Any], 
 
     # ── Step 6: Deduplicate edges, drop dangling ─────────────────────
     node_ids = set(nodes_by_id.keys())
-    edges_by_key: dict[tuple[str, str, str], dict] = {}
+    # Direction is part of the dedup key so a `forward` edge does not silently
+    # overwrite a `bidirectional` one (or vice versa); they're different
+    # semantic relationships that the dashboard renders distinctly.
+    edges_by_key: dict[tuple[str, str, str, str], dict] = {}
     for edge in all_edges:
         src = edge.get("source", "")
         tgt = edge.get("target", "")
         etype = edge.get("type", "")
+        direction = edge.get("direction", "forward")
 
         if src not in node_ids or tgt not in node_ids:
             missing = []
@@ -290,7 +309,7 @@ def merge_and_normalize(batches: list[dict[str, Any]]) -> tuple[dict[str, Any], 
             unfixable.append(f"Edge {src} → {tgt} ({etype}): dropped, missing {', '.join(missing)}")
             continue
 
-        key = (src, tgt, etype)
+        key = (src, tgt, etype, direction)
         existing = edges_by_key.get(key)
         if existing is None or _num(edge.get("weight", 0)) > _num(existing.get("weight", 0)):
             edges_by_key[key] = edge

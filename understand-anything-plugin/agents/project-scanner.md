@@ -92,9 +92,12 @@ Map file extensions to language identifiers:
 | `.vue` | `vue` |
 | `.svelte` | `svelte` |
 | `.sh`, `.bash` | `shell` |
+| `.ps1` | `powershell` |
+| `.bat`, `.cmd` | `batch` |
 | `.md`, `.rst` | `markdown` |
 | `.yaml`, `.yml` | `yaml` |
 | `.json` | `json` |
+| `.jsonc` | `jsonc` |
 | `.toml` | `toml` |
 | `.sql` | `sql` |
 | `.graphql`, `.gql` | `graphql` |
@@ -108,6 +111,8 @@ Map file extensions to language identifiers:
 | `Makefile` (no extension) | `makefile` |
 | `Jenkinsfile` (no extension) | `jenkinsfile` |
 
+**Fallback:** If a file's extension is not in the table above, set `language` to the lowercased extension (without the leading dot), or `"unknown"` if there is no extension. Never emit `null` — downstream consumers rely on this field being a string.
+
 Collect unique languages, sorted alphabetically.
 
 **Step 4 -- File Category Detection**
@@ -117,7 +122,7 @@ Assign a `fileCategory` to each discovered file based on its extension and path:
 | Pattern | Category |
 |---|---|
 | `.md`, `.rst`, `.txt` (except `LICENSE`) | `docs` |
-| `.yaml`, `.yml`, `.json`, `.toml`, `.xml`, `.cfg`, `.ini`, `.env`, `tsconfig.json`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod` | `config` |
+| `.yaml`, `.yml`, `.json`, `.jsonc`, `.toml`, `.xml`, `.cfg`, `.ini`, `.env`, `tsconfig.json`, `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod` | `config` |
 | `Dockerfile`, `docker-compose.*`, `.tf`, `.tfvars`, `Makefile`, `Jenkinsfile`, `Procfile`, `Vagrantfile`, `.github/workflows/*`, `.gitlab-ci.yml`, `.circleci/*`, `*.k8s.yaml`, `*.k8s.yml`, paths in `k8s/` or `kubernetes/` | `infra` |
 | `.sql`, `.graphql`, `.gql`, `.proto`, `.prisma`, `*.schema.json`, `.csv` | `data` |
 | `.sh`, `.bash`, `.ps1`, `.bat` | `script` |
@@ -182,12 +187,15 @@ For each code file, read its content and extract import paths using language-app
 
 | Language | Import patterns to match |
 |---|---|
-| TypeScript/JavaScript | `import ... from './...'` or `'../'`, `require('./...')` or `require('../...')` |
-| Python | `from .x import y`, `from ..x import y`, `from . import x` (relative only) |
+| TypeScript/JavaScript | Relative: `import ... from './...'` or `'../'`, `require('./...')` or `require('../...')`. **Plus path aliases** from `tsconfig.json` `compilerOptions.paths` and `baseUrl` (e.g. `@/foo` → `<baseUrl>/foo`, `~/foo` → `<baseUrl>/foo`). Read tsconfig.json (if present) and resolve every alias prefix against the discovered file list with the standard extension probes. |
+| Python | Both relative AND absolute. Relative: `from .x import y`, `from ..x import y`, `from . import x`. Absolute: `import a.b.c`, `from a.b.c import x[, y, ...]` — try every dotted path against the discovered file list (see resolution algorithm below) and keep matches; non-matches are external packages and are dropped. |
 | Go | Paths in `import (...)` blocks that start with the module path from `go.mod` |
 | Rust | `use crate::`, `use super::`, `mod x` (within the same crate) |
-| Java/Kotlin | Not resolvable by path — skip import resolution for these languages |
-| Ruby | `require_relative '...'` paths |
+| Java | `import com.example.foo.Bar;` — try `**/com/example/foo/Bar.java` against the discovered file list; keep matches |
+| Kotlin | `import com.example.foo.Bar` — try `**/com/example/foo/Bar.kt` against the discovered file list; keep matches |
+| Ruby | Relative: `require_relative '...'` paths. **Plus** `require 'foo/bar'` (load-path) — try `lib/foo/bar.rb`, `app/foo/bar.rb`, `foo/bar.rb` against the discovered file list. |
+| PHP | `use Vendor\Pkg\Class;` — read `composer.json` `autoload.psr-4` map (e.g. `"App\\": "src/"`), translate the namespace prefix to its directory, then try `<dir>/Pkg/Class.php` against the discovered file list. Skip imports whose namespace prefix isn't in the autoload map. |
+| C / C++ | `#include "foo.h"` (relative to the includer's directory) and `#include <foo.h>` — for both, also probe `include/foo.h`, `src/foo.h`, and the bare path against the discovered file list. Match `.h`, `.hpp`, `.hxx`, `.cuh`. |
 
 For each extracted import path:
 1. Compute the resolved file path relative to project root:
@@ -196,6 +204,26 @@ For each extracted import path:
 2. Check if the resolved path exists in the discovered file list
 3. If yes: add to this file's resolved imports list
 4. If no: skip (external, unresolvable, or dynamic import)
+
+**Python absolute imports — resolution algorithm.** This is the dominant import style in real Python projects, so it MUST be handled:
+
+For `import a.b.c`, try (in order, take first match in the discovered file list):
+- `a/b/c.py`
+- `a/b/c/__init__.py`
+
+For `from a.b.c import x, y, z`, try (in order, take first match for the module path):
+- `a/b/c.py`
+- `a/b/c/__init__.py`
+
+If the module path matched as a package (`__init__.py`), additionally probe each imported name `x`/`y`/`z` against:
+- `a/b/c/x.py`
+- `a/b/c/x/__init__.py`
+
+so that `from package import submodule` resolves to the submodule file. Skip names that don't match (they're class/function imports from inside the package, already covered by the `__init__.py` match).
+
+If NO probe matches, the import is external — drop it.
+
+**Worked example.** Discovered files include `src/utils/formatter.py`, `src/utils/__init__.py`. The line `from src.utils import formatter` resolves to `src/utils/__init__.py` (module match) AND `src/utils/formatter.py` (submodule probe). Both are added to the importer's resolved list.
 
 Output format in the script result:
 ```json
